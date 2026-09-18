@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">New book — Flourish Hub Global Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-shell">
+  <aside id="admin-sidebar"></aside>
+  <main class="admin-main" style="max-width:840px;">
+    <div class="admin-topbar">
+      <div><a href="/admin/books.html" style="font-size:0.85rem;">&larr; Books</a><h1 style="font-size:1.7rem; margin:0.3rem 0 0;" id="form-heading">New book</h1></div>
+      <div class="d-flex gap-2">
+        <span class="text-muted-folio" id="save-state" style="font-size:0.85rem; align-self:center;"></span>
+        <button class="btn-folio btn-folio-primary" id="save-btn">Save book</button>
+      </div>
+    </div>
+
+    <form id="book-form" class="form-folio">
+      <div class="row g-4">
+        <div class="col-md-8">
+          <div class="mb-3"><label>Title</label><input class="form-control" id="f-title" required></div>
+          <div class="mb-3"><label>Subtitle</label><input class="form-control" id="f-subtitle"></div>
+          <div class="mb-3"><label>Author name</label><input class="form-control" id="f-author"></div>
+          <div class="mb-3"><label>Description</label><textarea class="form-control" id="f-description" rows="6"></textarea></div>
+          <div class="mb-3"><label>Slug <span class="form-text-muted">(leave blank to auto-generate from title)</span></label><input class="form-control" id="f-slug"></div>
+          <div class="mb-3"><label>ISBN</label><input class="form-control" id="f-isbn"></div>
+        </div>
+        <div class="col-md-4">
+          <div class="mb-4">
+            <label>Cover image</label>
+            <div id="cover-preview" style="aspect-ratio:2/3; background:var(--surface); border:1px solid var(--border); margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <span class="text-muted-folio" style="font-size:0.8rem;">No cover yet</span>
+            </div>
+            <input type="file" id="cover-file" accept="image/*" class="form-control form-control-sm">
+          </div>
+
+          <div class="mb-3"><label>Status</label>
+            <select class="form-select" id="f-status">
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div class="mb-3"><label>Price (USD)</label><input type="number" step="0.01" min="0" class="form-control" id="f-price" required></div>
+
+          <div class="mb-2 d-flex align-items-center gap-2">
+            <input type="checkbox" id="f-is-digital" class="form-check-input"><label class="mb-0" for="f-is-digital">Digital edition</label>
+          </div>
+          <div id="digital-file-block" style="display:none;" class="mb-3">
+            <label>Digital file (PDF/EPUB) <span class="form-text-muted" id="digital-file-name"></span></label>
+            <input type="file" id="digital-file" class="form-control form-control-sm">
+          </div>
+
+          <div class="mb-2 d-flex align-items-center gap-2">
+            <input type="checkbox" id="f-is-physical" class="form-check-input"><label class="mb-0" for="f-is-physical">Physical edition</label>
+          </div>
+          <div id="physical-block" style="display:none;">
+            <div class="mb-3"><label>Stock quantity</label><input type="number" min="0" class="form-control" id="f-stock"></div>
+            <div class="mb-3"><label>Weight (grams)</label><input type="number" min="0" class="form-control" id="f-weight"></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="rule">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <label>Categories</label>
+          <div id="cat-checks" class="mb-3"></div>
+        </div>
+        <div class="col-md-6">
+          <label>Tags</label>
+          <div id="tag-checks" class="mb-3"></div>
+        </div>
+      </div>
+    </form>
+  </main>
+</div>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/admin.js"></script>
+<script>window.ACTIVE_ADMIN_NAV = 'books';</script>
+<script>
+const id = new URLSearchParams(location.search).get('id');
+let coverMediaId = null, digitalFileId = null;
+
+function slugify(s) { return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+
+async function uploadFile(inputEl, altText = '') {
+  if (!inputEl.files[0]) return null;
+  const fd = new FormData();
+  fd.append('file', inputEl.files[0]);
+  if (altText) fd.append('altText', altText);
+  const { media } = await api('/admin/media', { method: 'POST', admin: true, isForm: true, body: fd });
+  return media;
+}
+
+document.getElementById('f-is-digital').addEventListener('change', (e) => {
+  document.getElementById('digital-file-block').style.display = e.target.checked ? 'block' : 'none';
+});
+document.getElementById('f-is-physical').addEventListener('change', (e) => {
+  document.getElementById('physical-block').style.display = e.target.checked ? 'block' : 'none';
+});
+
+async function loadTaxonomy(selectedCats = [], selectedTags = []) {
+  const { categories } = await api('/taxonomy/categories/book', { admin: true });
+  document.getElementById('cat-checks').innerHTML = categories.length ? categories.map((c) => `
+    <label class="filter-check"><input type="checkbox" value="${c.id}" class="cat-check" ${selectedCats.includes(c.id) ? 'checked' : ''}> ${escapeHtml(c.name)}</label>
+  `).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">No categories yet — add some under Categories &amp; tags.</p>';
+
+  const { tags } = await api('/taxonomy/tags', { admin: true });
+  document.getElementById('tag-checks').innerHTML = tags.length ? tags.map((t) => `
+    <label class="filter-check"><input type="checkbox" value="${t.id}" class="tag-check" ${selectedTags.includes(t.id) ? 'checked' : ''}> ${escapeHtml(t.name)}</label>
+  `).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">No tags yet.</p>';
+}
+
+async function loadExisting() {
+  const { book, categories, tags } = await api(`/books/manage/${id}`, { admin: true });
+  document.getElementById('page-title').textContent = `Edit ${book.title} — Flourish Hub Global Admin`;
+  document.getElementById('form-heading').textContent = 'Edit book';
+  document.getElementById('f-title').value = book.title || '';
+  document.getElementById('f-subtitle').value = book.subtitle || '';
+  document.getElementById('f-author').value = book.book_author_name || '';
+  document.getElementById('f-description').value = book.description || '';
+  document.getElementById('f-slug').value = book.slug || '';
+  document.getElementById('f-isbn').value = book.isbn || '';
+  document.getElementById('f-status').value = book.status;
+  document.getElementById('f-price').value = (book.price_cents / 100).toFixed(2);
+  document.getElementById('f-is-digital').checked = book.is_digital;
+  document.getElementById('f-is-physical').checked = book.is_physical;
+  document.getElementById('digital-file-block').style.display = book.is_digital ? 'block' : 'none';
+  document.getElementById('physical-block').style.display = book.is_physical ? 'block' : 'none';
+  document.getElementById('f-stock').value = book.physical_stock_qty ?? '';
+  document.getElementById('f-weight').value = book.weight_grams ?? '';
+  coverMediaId = book.cover_image_id || null;
+  if (book.cover_url) {
+    document.getElementById('cover-preview').innerHTML = `<img src="${book.cover_url}" style="width:100%; height:100%; object-fit:cover;">`;
+  }
+  digitalFileId = book.digital_file_id || null;
+  if (digitalFileId) document.getElementById('digital-file-name').textContent = '(file already uploaded)';
+  await loadTaxonomy(categories.map((c) => c.id), tags.map((t) => t.id));
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; document.getElementById('save-state').textContent = 'Saving…';
+  try {
+    const coverFile = document.getElementById('cover-file');
+    if (coverFile.files[0]) { const m = await uploadFile(coverFile, 'Book cover'); coverMediaId = m.id; }
+    const digitalFile = document.getElementById('digital-file');
+    if (digitalFile.files[0]) { const m = await uploadFile(digitalFile); digitalFileId = m.id; }
+
+    const payload = {
+      title: document.getElementById('f-title').value,
+      subtitle: document.getElementById('f-subtitle').value || null,
+      bookAuthorName: document.getElementById('f-author').value || null,
+      description: document.getElementById('f-description').value || null,
+      slug: document.getElementById('f-slug').value || slugify(document.getElementById('f-title').value),
+      isbn: document.getElementById('f-isbn').value || null,
+      status: document.getElementById('f-status').value,
+      priceCents: Math.round(parseFloat(document.getElementById('f-price').value || '0') * 100),
+      isDigital: document.getElementById('f-is-digital').checked,
+      isPhysical: document.getElementById('f-is-physical').checked,
+      physicalStockQty: document.getElementById('f-stock').value ? parseInt(document.getElementById('f-stock').value) : null,
+      weightGrams: document.getElementById('f-weight').value ? parseInt(document.getElementById('f-weight').value) : null,
+      coverImageId: coverMediaId,
+      digitalFileId: digitalFileId,
+      categoryIds: Array.from(document.querySelectorAll('.cat-check:checked')).map((c) => parseInt(c.value)),
+      tagIds: Array.from(document.querySelectorAll('.tag-check:checked')).map((c) => parseInt(c.value)),
+    };
+
+    if (id) {
+      await api(`/books/${id}`, { method: 'PUT', admin: true, body: payload });
+    } else {
+      const { book } = await api('/books', { method: 'POST', admin: true, body: payload });
+      window.location.href = `/admin/book-form.html?id=${book.id}`;
+      return;
+    }
+    document.getElementById('save-state').textContent = 'Saved just now';
+    toast('Book saved');
+  } catch (e) {
+    toast(e.message || 'Could not save book', false);
+    document.getElementById('save-state').textContent = '';
+  } finally { btn.disabled = false; }
+});
+
+(async function () {
+  const admin = await initAdminPage();
+  if (!admin) return;
+  if (id) await loadExisting(); else await loadTaxonomy();
+})();
+</script>
+</body>
+</html>

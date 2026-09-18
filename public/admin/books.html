@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Books — Flourish Hub Global Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-shell">
+  <aside id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div><h1 style="font-size:1.7rem; margin-bottom:0.2rem;">Books</h1><p class="text-muted-folio" style="margin:0;">Everything in the shop, published or drafted.</p></div>
+      <a href="/admin/book-form.html" class="btn-folio btn-folio-primary">+ New book</a>
+    </div>
+
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+      <input type="text" id="f-search" class="form-control" placeholder="Search title or author…" style="max-width:280px; border-radius:3px; border:1px solid var(--border-2);">
+      <select id="f-status" class="form-select" style="max-width:170px; border-radius:3px; border:1px solid var(--border-2);">
+        <option value="">All statuses</option>
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+        <option value="archived">Archived</option>
+      </select>
+    </div>
+
+    <table class="table-folio">
+      <thead><tr><th>Title</th><th>Author</th><th>Price</th><th>Format</th><th>Status</th><th></th></tr></thead>
+      <tbody id="books-body"><tr><td colspan="6" class="text-muted-folio py-3">Loading…</td></tr></tbody>
+    </table>
+    <div class="pager" id="books-pager"></div>
+  </main>
+</div>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/admin.js"></script>
+<script>window.ACTIVE_ADMIN_NAV = 'books';</script>
+<script>
+const PAGE_SIZE = 15;
+let state = { page: 1, search: '', status: '' };
+
+async function load() {
+  const body = document.getElementById('books-body');
+  body.innerHTML = '<tr><td colspan="6" class="text-muted-folio py-3">Loading…</td></tr>';
+  try {
+    const { books } = await api('/books/manage' + qs({ ...state, pageSize: PAGE_SIZE }), { admin: true });
+    body.innerHTML = books.length ? books.map((b) => `
+      <tr>
+        <td><a href="/admin/book-form.html?id=${b.id}" style="color:var(--ink); font-weight:600;">${escapeHtml(b.title)}</a></td>
+        <td class="text-muted-folio">${escapeHtml(b.book_author_name || '—')}</td>
+        <td>${money(b.price_cents, b.currency)}</td>
+        <td class="text-muted-folio">${b.is_digital && b.is_physical ? 'Print + digital' : b.is_digital ? 'Digital' : 'Print'}</td>
+        <td><span class="status-pill status-${b.status}">${b.status}</span></td>
+        <td class="text-end">
+          <a href="/admin/book-form.html?id=${b.id}" class="btn-folio btn-folio-ghost btn-folio-sm"><i class="bi bi-pencil"></i></a>
+          <button class="btn-folio btn-folio-ghost btn-folio-sm" onclick="removeBook(${b.id})"><i class="bi bi-trash text-crimson"></i></button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="6" class="text-muted-folio py-3">No books match.</td></tr>';
+    const pager = document.getElementById('books-pager'); pager.innerHTML = '';
+    const prev = document.createElement('button'); prev.textContent = '← Previous'; prev.disabled = state.page <= 1;
+    prev.onclick = () => { state.page--; load(); };
+    const next = document.createElement('button'); next.textContent = 'Next →'; next.disabled = books.length < PAGE_SIZE;
+    next.onclick = () => { state.page++; load(); };
+    pager.append(prev, next);
+  } catch (e) { body.innerHTML = '<tr><td colspan="6" class="text-muted-folio py-3">Could not load books.</td></tr>'; }
+}
+
+async function removeBook(id) {
+  if (!confirm('Delete this book? This cannot be undone.')) return;
+  try { await api(`/books/${id}`, { method: 'DELETE', admin: true }); toast('Book deleted'); load(); }
+  catch (e) { toast(e.message || 'Could not delete', false); }
+}
+
+let t;
+document.getElementById('f-search').addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { state.search = e.target.value; state.page = 1; load(); }, 350); });
+document.getElementById('f-status').addEventListener('change', (e) => { state.status = e.target.value; state.page = 1; load(); });
+
+(async function () { const admin = await initAdminPage(); if (admin) load(); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">New episode — Flourish Hub Global Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+<div class="admin-shell">
+  <aside id="admin-sidebar"></aside>
+  <main class="admin-main" style="max-width:840px;">
+    <div class="admin-topbar">
+      <div><a href="/admin/podcasts.html" style="font-size:0.85rem;">&larr; Podcasts</a><h1 style="font-size:1.7rem; margin:0.3rem 0 0;" id="form-heading">New episode</h1></div>
+      <div class="d-flex gap-2">
+        <span class="text-muted-folio" id="save-state" style="font-size:0.85rem; align-self:center;"></span>
+        <button class="btn-folio btn-folio-primary" id="save-btn">Save episode</button>
+      </div>
+    </div>
+
+    <form id="pod-form" class="form-folio">
+      <div class="row g-4">
+        <div class="col-md-8">
+          <div class="mb-3"><label>Title</label><input class="form-control" id="f-title" required></div>
+          <div class="mb-3"><label>Description</label><textarea class="form-control" id="f-description" rows="4"></textarea></div>
+          <div class="mb-3"><label>Transcript <span class="form-text-muted">(optional, shown on the public page)</span></label><textarea class="form-control" id="f-transcript" rows="8"></textarea></div>
+          <div class="mb-3"><label>Slug</label><input class="form-control" id="f-slug"></div>
+        </div>
+        <div class="col-md-4">
+          <div class="mb-3"><label>Type</label>
+            <select class="form-select" id="f-type"><option value="audio">Audio</option><option value="video">Video</option></select>
+          </div>
+          <div class="mb-3"><label>Status</label>
+            <select class="form-select" id="f-status"><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select>
+          </div>
+          <div class="mb-3"><label>Duration (seconds)</label><input type="number" min="0" class="form-control" id="f-duration"></div>
+
+          <div class="mb-2 d-flex align-items-center gap-2">
+            <input type="checkbox" id="f-premium" class="form-check-input"><label class="mb-0" for="f-premium">Members-only</label>
+          </div>
+          <div id="price-block" style="display:none;" class="mb-3"><label>Price (USD)</label><input type="number" step="0.01" min="0" class="form-control" id="f-price"></div>
+
+          <div class="mb-3">
+            <label>Thumbnail image</label>
+            <div id="thumb-preview" style="aspect-ratio:4/3; background:var(--surface); border:1px solid var(--border); margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <span class="text-muted-folio" style="font-size:0.8rem;">No thumbnail yet</span>
+            </div>
+            <input type="file" id="thumb-file" accept="image/*" class="form-control form-control-sm">
+          </div>
+          <div class="mb-3"><label>Full episode file <span class="form-text-muted" id="media-name"></span></label><input type="file" id="media-file" class="form-control form-control-sm"></div>
+          <div class="mb-3" id="preview-block" style="display:none;"><label>Preview / teaser clip <span class="form-text-muted" id="preview-name"></span></label><input type="file" id="preview-file" class="form-control form-control-sm"></div>
+        </div>
+      </div>
+
+      <hr class="rule">
+      <div class="row g-4">
+        <div class="col-md-6"><label>Categories</label><div id="cat-checks"></div></div>
+        <div class="col-md-6"><label>Tags</label><div id="tag-checks"></div></div>
+      </div>
+    </form>
+  </main>
+</div>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/admin.js"></script>
+<script>window.ACTIVE_ADMIN_NAV = 'podcasts';</script>
+<script>
+const id = new URLSearchParams(location.search).get('id');
+let thumbnailId = null, mediaId = null, previewMediaId = null;
+function slugify(s) { return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+
+async function uploadFile(inputEl, altText = '') {
+  if (!inputEl.files[0]) return null;
+  const fd = new FormData();
+  fd.append('file', inputEl.files[0]);
+  if (altText) fd.append('altText', altText);
+  const { media } = await api('/admin/media', { method: 'POST', admin: true, isForm: true, body: fd });
+  return media;
+}
+
+document.getElementById('f-premium').addEventListener('change', (e) => {
+  document.getElementById('price-block').style.display = e.target.checked ? 'block' : 'none';
+  document.getElementById('preview-block').style.display = e.target.checked ? 'block' : 'none';
+});
+
+async function loadTaxonomy(selectedCats = [], selectedTags = []) {
+  const { categories } = await api('/taxonomy/categories/podcast', { admin: true });
+  document.getElementById('cat-checks').innerHTML = categories.length ? categories.map((c) => `
+    <label class="filter-check"><input type="checkbox" value="${c.id}" class="cat-check" ${selectedCats.includes(c.id) ? 'checked' : ''}> ${escapeHtml(c.name)}</label>`).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">None yet.</p>';
+  const { tags } = await api('/taxonomy/tags', { admin: true });
+  document.getElementById('tag-checks').innerHTML = tags.length ? tags.map((t) => `
+    <label class="filter-check"><input type="checkbox" value="${t.id}" class="tag-check" ${selectedTags.includes(t.id) ? 'checked' : ''}> ${escapeHtml(t.name)}</label>`).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">None yet.</p>';
+}
+
+async function loadExisting() {
+  const { podcast } = await api(`/podcasts/manage/${id}`, { admin: true });
+  document.getElementById('page-title').textContent = `Edit ${podcast.title} — Flourish Hub Global Admin`;
+  document.getElementById('form-heading').textContent = 'Edit episode';
+  document.getElementById('f-title').value = podcast.title || '';
+  document.getElementById('f-description').value = podcast.description || '';
+  document.getElementById('f-transcript').value = podcast.transcript || '';
+  document.getElementById('f-slug').value = podcast.slug || '';
+  document.getElementById('f-type').value = podcast.type || 'audio';
+  document.getElementById('f-status').value = podcast.status;
+  document.getElementById('f-duration').value = podcast.duration_seconds ?? '';
+  document.getElementById('f-premium').checked = podcast.is_premium;
+  document.getElementById('price-block').style.display = podcast.is_premium ? 'block' : 'none';
+  document.getElementById('preview-block').style.display = podcast.is_premium ? 'block' : 'none';
+  document.getElementById('f-price').value = podcast.price_cents ? (podcast.price_cents / 100).toFixed(2) : '';
+  thumbnailId = podcast.thumbnail_id; mediaId = podcast.media_id; previewMediaId = podcast.preview_media_id;
+  if (podcast.thumbnail_url) {
+    document.getElementById('thumb-preview').innerHTML = `<img src="${podcast.thumbnail_url}" style="width:100%; height:100%; object-fit:cover;">`;
+  }
+  if (mediaId) document.getElementById('media-name').textContent = '(uploaded)';
+  if (previewMediaId) document.getElementById('preview-name').textContent = '(uploaded)';
+  await loadTaxonomy();
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; document.getElementById('save-state').textContent = 'Saving…';
+  try {
+    const t = document.getElementById('thumb-file'); if (t.files[0]) { const m = await uploadFile(t, 'Episode thumbnail'); thumbnailId = m.id; }
+    const mf = document.getElementById('media-file'); if (mf.files[0]) { const m = await uploadFile(mf); mediaId = m.id; }
+    const pf = document.getElementById('preview-file'); if (pf.files[0]) { const m = await uploadFile(pf); previewMediaId = m.id; }
+
+    const payload = {
+      title: document.getElementById('f-title').value,
+      description: document.getElementById('f-description').value || null,
+      transcript: document.getElementById('f-transcript').value || null,
+      slug: document.getElementById('f-slug').value || slugify(document.getElementById('f-title').value),
+      type: document.getElementById('f-type').value,
+      status: document.getElementById('f-status').value,
+      durationSeconds: document.getElementById('f-duration').value ? parseInt(document.getElementById('f-duration').value) : null,
+      isPremium: document.getElementById('f-premium').checked,
+      priceCents: document.getElementById('f-price').value ? Math.round(parseFloat(document.getElementById('f-price').value) * 100) : null,
+      thumbnailId, mediaId, previewMediaId,
+      categoryIds: Array.from(document.querySelectorAll('.cat-check:checked')).map((c) => parseInt(c.value)),
+      tagIds: Array.from(document.querySelectorAll('.tag-check:checked')).map((c) => parseInt(c.value)),
+    };
+
+    if (id) { await api(`/podcasts/${id}`, { method: 'PUT', admin: true, body: payload }); }
+    else { const { podcast } = await api('/podcasts', { method: 'POST', admin: true, body: payload }); window.location.href = `/admin/podcast-form.html?id=${podcast.id}`; return; }
+    document.getElementById('save-state').textContent = 'Saved just now';
+    toast('Episode saved');
+  } catch (e) { toast(e.message || 'Could not save', false); document.getElementById('save-state').textContent = ''; }
+  finally { btn.disabled = false; }
+});
+
+(async function () {
+  const admin = await initAdminPage();
+  if (!admin) return;
+  if (id) await loadExisting(); else await loadTaxonomy();
+})();
+</script>
+</body>
+</html>

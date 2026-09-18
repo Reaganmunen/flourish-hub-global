@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your bag — Flourish Hub Global</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+<header id="site-header" class="site-header"></header>
+
+<div class="container-folio" style="padding:3rem 0 5rem;">
+  <h1 style="font-size:2.1rem; margin-bottom:2rem;">Your bag</h1>
+  <div class="row g-5">
+    <div class="col-lg-7">
+      <div id="cart-items"></div>
+    </div>
+    <div class="col-lg-5">
+      <div class="panel">
+        <h3 style="margin-bottom:1.2rem;">Order summary</h3>
+        <div class="d-flex justify-content-between mb-2"><span class="text-muted-folio">Subtotal</span><strong id="sum-subtotal">$0.00</strong></div>
+        <div class="d-flex justify-content-between mb-2" id="shipping-row" style="display:none;"><span class="text-muted-folio">Shipping</span><strong id="sum-shipping">$0.00</strong></div>
+        <hr class="rule" style="margin:1rem 0;">
+        <div class="d-flex justify-content-between mb-4"><span>Total</span><strong id="sum-total" style="font-size:1.2rem;">$0.00</strong></div>
+
+        <form id="checkout-form" class="form-folio">
+          <div id="guest-fields">
+            <div class="mb-3">
+              <label>Email</label>
+              <input type="email" class="form-control" id="ck-email" required>
+            </div>
+            <div class="mb-3">
+              <label>Full name</label>
+              <input type="text" class="form-control" id="ck-name" required>
+            </div>
+          </div>
+          <div id="shipping-fields" style="display:none;">
+            <hr class="rule" style="margin:1.2rem 0;">
+            <p class="fw-semibold" style="font-size:0.9rem;">Shipping address <span class="text-muted-folio fw-normal">(a physical book is in your bag)</span></p>
+            <div class="mb-3"><label>Address line 1</label><input type="text" class="form-control" id="sh-line1"></div>
+            <div class="mb-3"><label>Address line 2</label><input type="text" class="form-control" id="sh-line2"></div>
+            <div class="row">
+              <div class="col-6 mb-3"><label>City</label><input type="text" class="form-control" id="sh-city"></div>
+              <div class="col-6 mb-3"><label>State / region</label><input type="text" class="form-control" id="sh-state"></div>
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3"><label>Postal code</label><input type="text" class="form-control" id="sh-postal"></div>
+              <div class="col-6 mb-3"><label>Country</label><input type="text" class="form-control" id="sh-country" value="US"></div>
+            </div>
+          </div>
+          <button class="btn-folio btn-folio-crimson btn-folio-block mt-2" id="checkout-btn" type="submit">Proceed to payment</button>
+          <p class="text-muted-folio" style="font-size:0.8rem; margin-top:0.8rem;">You'll be redirected to our secure Stripe checkout to pay.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/cart.js"></script>
+<script>window.ACTIVE_NAV = 'shop';</script>
+<script src="/assets/js/main.js"></script>
+<script>
+const PLACEHOLDER_COVER = 'https://placehold.co/200x300/f0f0f3/6b6f76?text=Flourish+Hub+Global';
+
+function renderCart() {
+  const items = getCart();
+  const host = document.getElementById('cart-items');
+  if (!items.length) {
+    host.innerHTML = '<div class="empty-state">Your bag is empty. <a href="/shop.html">Browse the shop</a></div>';
+  } else {
+    host.innerHTML = items.map((it) => `
+      <div class="d-flex gap-3 align-items-center" style="padding:1.2rem 0; border-bottom:1px solid var(--border);">
+        <img src="${it.image || PLACEHOLDER_COVER}" style="width:64px; height:96px; object-fit:cover; border:1px solid var(--border);">
+        <div class="flex-grow-1">
+          <h4 style="margin-bottom:0.2rem;">${escapeHtml(it.title)}</h4>
+          <div class="text-muted-folio" style="font-size:0.85rem; text-transform:capitalize;">${it.itemType}</div>
+        </div>
+        ${it.itemType === 'book' ? `
+          <input type="number" min="1" value="${it.quantity}" class="form-control" style="width:70px; border-radius:3px; border:1px solid var(--border-2);"
+            onchange="setQuantity('${it.itemType}','${it.id}', parseInt(this.value)||1); renderCart();">
+        ` : `<span class="text-muted-folio" style="font-size:0.85rem;">Qty 1</span>`}
+        <strong style="min-width:80px; text-align:right;">${money(it.priceCents * it.quantity)}</strong>
+        <button class="btn-folio-ghost" onclick="removeFromCart('${it.itemType}','${it.id}'); renderCart();"><i class="bi bi-x-lg"></i></button>
+      </div>`).join('');
+  }
+
+  const subtotal = cartSubtotalCents();
+  const hasPhysicalBook = items.some((i) => i.itemType === 'book' && i.isPhysical) || false;
+  document.getElementById('sum-subtotal').textContent = money(subtotal);
+  document.getElementById('sum-total').textContent = money(subtotal);
+  document.getElementById('checkout-btn').disabled = items.length === 0;
+
+  const customer = AUTH.getCustomer();
+  document.getElementById('guest-fields').style.display = customer ? 'none' : 'block';
+}
+renderCart();
+
+document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const items = getCart();
+  if (!items.length) return;
+  const customer = AUTH.getCustomer();
+  const btn = document.getElementById('checkout-btn');
+  btn.disabled = true; btn.textContent = 'Redirecting to payment…';
+
+  const payload = {
+    items: items.map((i) => ({ itemType: i.itemType, id: i.id, quantity: i.quantity })),
+  };
+  if (!customer) {
+    payload.guestEmail = document.getElementById('ck-email').value;
+    payload.guestFullName = document.getElementById('ck-name').value;
+  }
+  const line1 = document.getElementById('sh-line1').value;
+  if (line1) {
+    payload.shippingAddress = {
+      line1, line2: document.getElementById('sh-line2').value,
+      city: document.getElementById('sh-city').value, stateRegion: document.getElementById('sh-state').value,
+      postalCode: document.getElementById('sh-postal').value, country: document.getElementById('sh-country').value,
+    };
+    payload.billingAddress = payload.shippingAddress;
+  }
+
+  try {
+    const res = await api('/orders/checkout', { method: 'POST', body: payload, auth: !!customer });
+    clearCart();
+    window.location.href = res.checkoutUrl;
+  } catch (err) {
+    toast(err.message || 'Checkout failed', false);
+    btn.disabled = false; btn.textContent = 'Proceed to payment';
+  }
+});
+</script>
+</body>
+</html>

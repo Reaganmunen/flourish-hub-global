@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">New article — Flourish Hub Global Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+<style>
+  .editor-shell { display: grid; grid-template-columns: 1fr 300px; gap: 2.4rem; align-items: start; }
+  @media (max-width: 1000px) { .editor-shell { grid-template-columns: 1fr; } }
+  #title-input { font-family: var(--font-serif); font-size: 2.1rem; font-weight: 500; border: none; width: 100%; outline: none; margin-bottom: 0.3rem; }
+  #title-input::placeholder { color: var(--gray-light); }
+  #excerpt-input { border: none; width: 100%; outline: none; color: var(--gray); resize: none; font-size: 1rem; }
+  .editor-toolbar-note { font-size: 0.8rem; color: var(--gray); margin: 0.6rem 0 1.4rem; }
+  .side-sticky { position: sticky; top: 88px; }
+</style>
+</head>
+<body>
+<div class="admin-shell">
+  <aside id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div><a href="/admin/posts.html" style="font-size:0.85rem;">&larr; Articles</a></div>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="text-muted-folio" id="save-state" style="font-size:0.85rem;"></span>
+        <button class="btn-folio btn-folio-outline" id="save-draft-btn">Save draft</button>
+        <button class="btn-folio btn-folio-crimson" id="publish-btn">Publish</button>
+      </div>
+    </div>
+
+    <div class="editor-shell">
+      <div>
+        <input id="title-input" placeholder="Article title">
+        <textarea id="excerpt-input" rows="2" placeholder="One or two lines for the article listing…"></textarea>
+        <p class="editor-toolbar-note">Click on a new line, then the <strong>+</strong> button to add a block — heading, image, quote, list, table, embed and more. Drag the ⠿ handle on the left of any block to reorder it.</p>
+        <div id="editorjs"></div>
+
+        <div id="preview-editor-wrap" style="display:none; margin-top:2.5rem;">
+          <hr class="rule">
+          <h4>Preview content <span class="text-muted-folio" style="font-weight:400; font-size:0.85rem;">— shown to non-members before the paywall</span></h4>
+          <div id="editorjs-preview" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+
+      <aside class="side-sticky">
+        <div class="panel mb-3">
+          <h4 style="margin-bottom:1rem;">Publish settings</h4>
+          <div class="form-folio">
+            <div class="mb-3"><label>Type</label>
+              <select class="form-select" id="f-type"><option value="blog">Blog</option><option value="essay">Essay</option><option value="interview">Interview</option><option value="news">News</option></select>
+            </div>
+            <div class="mb-3"><label>Slug</label><input class="form-control" id="f-slug" placeholder="auto-generated"></div>
+            <div class="mb-2 d-flex align-items-center gap-2">
+              <input type="checkbox" id="f-premium" class="form-check-input"><label class="mb-0" for="f-premium">Members-only</label>
+            </div>
+            <div id="price-block" style="display:none;" class="mb-2"><label>Price (USD)</label><input type="number" step="0.01" min="0" class="form-control" id="f-price"></div>
+          </div>
+        </div>
+
+        <div class="panel mb-3">
+          <h4 style="margin-bottom:1rem;">Featured image</h4>
+          <div id="featured-preview" style="aspect-ratio:16/10; background:var(--surface); border:1px solid var(--border); margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center;">
+            <span class="text-muted-folio" style="font-size:0.8rem;">No image yet</span>
+          </div>
+          <input type="file" id="featured-file" accept="image/*" class="form-control form-control-sm">
+        </div>
+
+        <div class="panel mb-3">
+          <h4 style="margin-bottom:1rem;">Categories &amp; tags</h4>
+          <label class="form-text-muted mb-1 d-block">Categories</label>
+          <div id="cat-checks" class="mb-3"></div>
+          <label class="form-text-muted mb-1 d-block">Tags</label>
+          <div id="tag-checks"></div>
+        </div>
+
+        <div class="panel">
+          <h4 style="margin-bottom:1rem;">SEO</h4>
+          <div class="form-folio">
+            <div class="mb-3"><label>SEO title</label><input class="form-control" id="f-seo-title"></div>
+            <div class="mb-3"><label>SEO description</label><textarea class="form-control" id="f-seo-desc" rows="3"></textarea></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/admin.js"></script>
+<script>window.ACTIVE_ADMIN_NAV = 'posts';</script>
+
+<!-- Editor.js core + block tools (drag-to-reorder, "+" block inserter — Word-style block editing) -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.7"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@1.10.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@1.4.2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/table@2.4.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/embed@2.7.6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/underline@1.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/image@2.9.3"></script>
+
+<script>
+const id = new URLSearchParams(location.search).get('id');
+let featuredImageId = null;
+let currentStatus = 'draft';
+function slugify(s) { return (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+
+/** Feeds a browser File into the media-library upload endpoint and returns
+ *  the response shape Editor.js's Image tool expects. */
+async function editorImageUpload(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const { media } = await api('/admin/media', { method: 'POST', admin: true, isForm: true, body: fd });
+  return { success: 1, file: { url: media.file_url } };
+}
+
+function makeTools() {
+  return {
+    header: { class: Header, inlineToolbar: true, config: { levels: [2, 3, 4], defaultLevel: 2 } },
+    list: { class: List, inlineToolbar: true },
+    quote: { class: Quote, inlineToolbar: true },
+    delimiter: Delimiter,
+    table: { class: Table, inlineToolbar: true },
+    embed: Embed,
+    marker: Marker,
+    underline: Underline,
+    image: { class: ImageTool, config: { uploader: { uploadByFile: editorImageUpload } } },
+  };
+}
+
+const editor = new EditorJS({ holder: 'editorjs', placeholder: 'Start writing…', tools: makeTools(), autofocus: true });
+let previewEditor = null;
+
+function ensurePreviewEditor() {
+  document.getElementById('preview-editor-wrap').style.display = 'block';
+  if (!previewEditor) {
+    previewEditor = new EditorJS({ holder: 'editorjs-preview', placeholder: 'What non-members see before the paywall…', tools: makeTools() });
+  }
+}
+
+document.getElementById('f-premium').addEventListener('change', (e) => {
+  document.getElementById('price-block').style.display = e.target.checked ? 'block' : 'none';
+  if (e.target.checked) ensurePreviewEditor();
+  else document.getElementById('preview-editor-wrap').style.display = 'none';
+});
+
+document.getElementById('featured-file').addEventListener('change', async (e) => {
+  if (!e.target.files[0]) return;
+  const fd = new FormData(); fd.append('file', e.target.files[0]); fd.append('altText', 'Featured image');
+  try {
+    const { media } = await api('/admin/media', { method: 'POST', admin: true, isForm: true, body: fd });
+    featuredImageId = media.id;
+    document.getElementById('featured-preview').innerHTML = `<img src="${media.file_url}" style="width:100%; height:100%; object-fit:cover;">`;
+  } catch (err) { toast('Could not upload image', false); }
+});
+
+async function loadTaxonomy(selectedCats = [], selectedTags = []) {
+  const { categories } = await api('/taxonomy/categories/post', { admin: true });
+  document.getElementById('cat-checks').innerHTML = categories.length ? categories.map((c) => `
+    <label class="filter-check"><input type="checkbox" value="${c.id}" class="cat-check" ${selectedCats.includes(c.id) ? 'checked' : ''}> ${escapeHtml(c.name)}</label>`).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">None yet.</p>';
+  const { tags } = await api('/taxonomy/tags', { admin: true });
+  document.getElementById('tag-checks').innerHTML = tags.length ? tags.map((t) => `
+    <label class="filter-check"><input type="checkbox" value="${t.id}" class="tag-check" ${selectedTags.includes(t.id) ? 'checked' : ''}> ${escapeHtml(t.name)}</label>`).join('') : '<p class="text-muted-folio" style="font-size:0.85rem;">None yet.</p>';
+}
+
+async function loadExisting() {
+  const { post } = await api(`/posts/manage/${id}`, { admin: true });
+  document.getElementById('page-title').textContent = `Edit ${post.title} — Flourish Hub Global Admin`;
+  document.getElementById('title-input').value = post.title || '';
+  document.getElementById('excerpt-input').value = post.excerpt || '';
+  document.getElementById('f-type').value = post.type || 'blog';
+  document.getElementById('f-slug').value = post.slug || '';
+  document.getElementById('f-premium').checked = post.is_premium;
+  document.getElementById('price-block').style.display = post.is_premium ? 'block' : 'none';
+  document.getElementById('f-price').value = post.price_cents ? (post.price_cents / 100).toFixed(2) : '';
+  document.getElementById('f-seo-title').value = post.seo_title || '';
+  document.getElementById('f-seo-desc').value = post.seo_description || '';
+  featuredImageId = post.featured_image_id || null;
+  if (post.featured_image_url) {
+    document.getElementById('featured-preview').innerHTML = `<img src="${post.featured_image_url}" style="width:100%; height:100%; object-fit:cover;">`;
+  }
+  currentStatus = post.status || 'draft';
+
+  if (Array.isArray(post.content) && post.content.length) {
+    await editor.isReady;
+    await editor.render({ blocks: post.content });
+  }
+  if (post.is_premium) {
+    ensurePreviewEditor();
+    if (Array.isArray(post.preview_content) && post.preview_content.length) {
+      await previewEditor.isReady;
+      await previewEditor.render({ blocks: post.preview_content });
+    }
+  }
+
+  // Note: postController.getById only returns { post } — the API has no
+  // route that reports which categories/tags are already on a post, so
+  // the checkboxes below can't be pre-checked on an existing article.
+  // Re-tick anything relevant and save once to reattach it.
+  await loadTaxonomy();
+}
+
+async function save(status) {
+  const btn = status === 'published' ? document.getElementById('publish-btn') : document.getElementById('save-draft-btn');
+  btn.disabled = true;
+  document.getElementById('save-state').textContent = 'Saving…';
+  try {
+    const content = await editor.save();
+    let previewContent = null;
+    if (document.getElementById('f-premium').checked && previewEditor) {
+      previewContent = (await previewEditor.save()).blocks;
+    }
+
+    const title = document.getElementById('title-input').value.trim();
+    if (!title) { toast('Give the article a title first', false); btn.disabled = false; document.getElementById('save-state').textContent = ''; return; }
+
+    const payload = {
+      title,
+      excerpt: document.getElementById('excerpt-input').value || null,
+      content: content.blocks,
+      type: document.getElementById('f-type').value,
+      slug: document.getElementById('f-slug').value || slugify(title),
+      isPremium: document.getElementById('f-premium').checked,
+      priceCents: document.getElementById('f-price').value ? Math.round(parseFloat(document.getElementById('f-price').value) * 100) : null,
+      previewContent,
+      featuredImageId,
+      seoTitle: document.getElementById('f-seo-title').value || null,
+      seoDescription: document.getElementById('f-seo-desc').value || null,
+      status,
+      categoryIds: Array.from(document.querySelectorAll('.cat-check:checked')).map((c) => parseInt(c.value)),
+      tagIds: Array.from(document.querySelectorAll('.tag-check:checked')).map((c) => parseInt(c.value)),
+    };
+
+    if (id) {
+      await api(`/posts/${id}`, { method: 'PUT', admin: true, body: payload });
+    } else {
+      const { post } = await api('/posts', { method: 'POST', admin: true, body: payload });
+      window.location.href = `/admin/post-editor.html?id=${post.id}`;
+      return;
+    }
+    currentStatus = status;
+    document.getElementById('save-state').textContent = status === 'published' ? 'Published' : 'Draft saved';
+    toast(status === 'published' ? 'Article published' : 'Draft saved');
+  } catch (e) {
+    toast(e.message || 'Could not save', false);
+    document.getElementById('save-state').textContent = '';
+  } finally { btn.disabled = false; }
+}
+
+document.getElementById('save-draft-btn').addEventListener('click', () => save('draft'));
+document.getElementById('publish-btn').addEventListener('click', () => save('published'));
+
+// Autosave every 30s once the article exists, keeping whatever status
+// (draft/published) it already has — matches the CMS editor calling PUT
+// repeatedly on every autosave, per the comment in postController.js.
+setInterval(() => {
+  if (id && document.getElementById('title-input').value.trim()) save(currentStatus);
+}, 30000);
+
+(async function () {
+  const admin = await initAdminPage();
+  if (!admin) return;
+  if (id) await loadExisting(); else await loadTaxonomy();
+})();
+</script>
+</body>
+</html>

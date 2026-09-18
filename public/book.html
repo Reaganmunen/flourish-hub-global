@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Book — Flourish Hub Global</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+<header id="site-header" class="site-header"></header>
+
+<div id="book-detail" class="container-folio" style="padding:3rem 0 5rem;">
+  <div class="empty-state">Loading…</div>
+</div>
+
+<section class="container-folio" style="padding-bottom:5rem;">
+  <div class="section-head"><h2>You might also like</h2></div>
+  <div class="card-grid" id="related-books"></div>
+</section>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/cart.js"></script>
+<script>window.ACTIVE_NAV = 'shop';</script>
+<script src="/assets/js/main.js"></script>
+<script>
+const PLACEHOLDER_COVER = 'https://placehold.co/500x750/f0f0f3/6b6f76?text=Flourish+Hub+Global';
+const slug = new URLSearchParams(location.search).get('slug');
+
+function bookCardMini(book) {
+  return `
+    <a href="/book.html?slug=${encodeURIComponent(book.slug)}" class="book-card">
+      <div class="cover-wrap"><img src="${book.cover_url || PLACEHOLDER_COVER}" alt="${escapeHtml(book.title)}"></div>
+      <h3>${escapeHtml(book.title)}</h3>
+      <div class="by-line">${escapeHtml(book.book_author_name || '')}</div>
+      <div class="price">${money(book.price_cents, book.currency)}</div>
+    </a>`;
+}
+
+async function load() {
+  const host = document.getElementById('book-detail');
+  if (!slug) { host.innerHTML = '<div class="empty-state">No book specified.</div>'; return; }
+  try {
+    const { book, categories, tags } = await api(`/books/slug/${encodeURIComponent(slug)}`, { auth: false });
+    document.getElementById('page-title').textContent = `${book.title} — Flourish Hub Global`;
+
+    const format = book.is_digital && book.is_physical ? 'Print + digital' : (book.is_digital ? 'Digital edition' : 'Print edition');
+    const stockNote = (!book.is_digital || book.is_physical) && book.physical_stock_qty !== null
+      ? (book.physical_stock_qty > 0 ? `${book.physical_stock_qty} in stock` : 'Out of stock')
+      : '';
+
+    host.innerHTML = `
+      <div class="row g-5">
+        <div class="col-md-5">
+          <div class="cover-wrap" style="aspect-ratio:2/3; border:1px solid var(--border);">
+            <img src="${book.cover_url || PLACEHOLDER_COVER}" alt="${escapeHtml(book.title)}" style="width:100%; height:100%; object-fit:cover;">
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            ${categories.map((c) => `<span class="badge-folio soft">${escapeHtml(c.name)}</span>`).join('')}
+          </div>
+          <h1>${escapeHtml(book.title)}</h1>
+          ${book.subtitle ? `<p class="text-muted-folio fs-5" style="margin-top:-0.6rem;">${escapeHtml(book.subtitle)}</p>` : ''}
+          <p class="text-muted-folio">by <strong style="color:var(--ink);">${escapeHtml(book.book_author_name || 'Unknown')}</strong></p>
+          <div class="d-flex align-items-center gap-3 my-3">
+            <span class="price" style="font-size:1.6rem;">${money(book.price_cents, book.currency)}</span>
+            <span class="badge-folio soft">${format}</span>
+          </div>
+          ${stockNote ? `<p class="text-muted-folio" style="font-size:0.88rem;">${stockNote}</p>` : ''}
+          <div class="d-flex gap-3 my-4">
+            <button class="btn-folio btn-folio-primary" id="add-cart-btn">Add to bag</button>
+            <a href="/cart.html" class="btn-folio btn-folio-outline" id="buy-now-btn">Buy now</a>
+          </div>
+          <hr class="rule" style="margin:2rem 0;">
+          <h3>About this book</h3>
+          <p style="white-space:pre-line; color:var(--ink-soft);">${escapeHtml(book.description || 'No description yet.')}</p>
+          ${book.isbn ? `<p class="text-muted-folio" style="font-size:0.85rem;">ISBN ${escapeHtml(book.isbn)}</p>` : ''}
+          ${tags.length ? `<div class="d-flex gap-2 flex-wrap mt-3">${tags.map((t) => `<span class="badge-folio" style="background:var(--surface-2); color:var(--gray);">${escapeHtml(t.name)}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>`;
+
+    const outOfStock = stockNote === 'Out of stock';
+    document.getElementById('add-cart-btn').disabled = outOfStock;
+    if (outOfStock) document.getElementById('add-cart-btn').textContent = 'Out of stock';
+    document.getElementById('add-cart-btn').addEventListener('click', () => {
+      addToCart({ itemType: 'book', id: book.id, title: book.title, priceCents: book.price_cents, image: book.cover_url, quantity: 1 });
+    });
+
+    if (categories[0]) {
+      const { books } = await api('/books' + qs({ categoryId: categories[0].id, pageSize: 4 }), { auth: false });
+      const related = books.filter((b) => b.id !== book.id).slice(0, 4);
+      document.getElementById('related-books').innerHTML = related.length
+        ? related.map(bookCardMini).join('')
+        : '<div class="empty-state">More titles coming soon.</div>';
+    }
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state">This book could not be found.</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

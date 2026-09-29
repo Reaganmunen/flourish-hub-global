@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flourish Hub Global — Nourishing to Flourish</title>
+<title>Flourish Hub Global | Nourishing to Flourish</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -14,14 +14,16 @@
 <header id="site-header" class="site-header"></header>
 
 <section class="hero">
+  <div class="hero-slides" id="hero-slides" aria-hidden="true"></div>
+  <div class="hero-ctrl"><button class="circ-btn" id="hs-prev" aria-label="Previous slide"><i class="bi bi-chevron-left"></i></button><div class="hs-dots" id="hs-dots"></div><button class="circ-btn" id="hs-next" aria-label="Next slide"><i class="bi bi-chevron-right"></i></button></div>
   <div class="container-folio hero-grid">
     <div>
       <div class="hero-kicker">Featured release</div>
       <h1>Rise and flourish,<br>one honest page at a time.</h1>
-      <p class="lede">Flourish Hub Global is home to Jackylene Wegoki's writing, essays and conversations on moving from survival to a life of abundance and impact — starting with her new book, <em>Rise and Flourish</em>.</p>
+      <p class="lede">Flourish Hub Global is home to Jackylene Wegoki's writing, essays and conversations on moving from survival to a life of abundance and impact, starting with her new book, <em>Rise and Flourish</em>.</p>
       <div class="d-flex gap-3 flex-wrap">
-        <a href="/shop.html" class="btn-folio btn-folio-primary">Get the book</a>
-        <a href="/about.html" class="btn-folio btn-folio-outline">About Jackylene</a>
+        <a href="/shop.html" class="btn-folio btn-folio-primary"><i class="bi bi-book-half"></i> Get the book</a>
+        <a href="/about.html" class="btn-folio btn-folio-outline"><i class="bi bi-person-heart"></i> About Jackylene</a>
       </div>
     </div>
     <div class="hero-covers" id="hero-covers"></div>
@@ -31,7 +33,7 @@
 <section class="container-folio" style="padding-top:4.5rem;">
   <div class="section-head">
     <h2>New &amp; notable books</h2>
-    <a href="/shop.html" class="see-all">See the full shop &rarr;</a>
+    <a href="/shop.html" class="see-all">See the full shop <i class="bi bi-arrow-right"></i></a>
   </div>
   <div class="card-grid" id="home-books"><div class="empty-state">Loading books…</div></div>
 </section>
@@ -39,7 +41,7 @@
 <section class="container-folio" style="padding-top:4.5rem;">
   <div class="section-head">
     <h2>From the journal</h2>
-    <a href="/articles.html" class="see-all">All articles &rarr;</a>
+    <a href="/articles.html" class="see-all">All articles <i class="bi bi-arrow-right"></i></a>
   </div>
   <div id="home-posts"></div>
 </section>
@@ -47,20 +49,28 @@
 <section class="container-folio" style="padding-top:2rem;">
   <div class="section-head">
     <h2>Latest episodes</h2>
-    <a href="/podcasts.html" class="see-all">All podcasts &rarr;</a>
+    <a href="/podcasts.html" class="see-all">All podcasts <i class="bi bi-arrow-right"></i></a>
   </div>
   <div class="row g-4" id="home-podcasts"></div>
 </section>
 
+<section class="container-folio" style="padding-top:4.5rem;">
+  <div class="section-head">
+    <h2>Moments &amp; gallery</h2>
+    <div class="d-flex gap-2"><button class="circ-btn" id="g-prev" aria-label="Previous"><i class="bi bi-arrow-left"></i></button><button class="circ-btn" id="g-next" aria-label="Next"><i class="bi bi-arrow-right"></i></button></div>
+  </div>
+  <div class="gallery" id="gallery"></div>
+</section>
+
 <section class="container-folio" style="padding:5rem 0 2rem;">
   <div class="panel" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1.5rem;">
-    <div>
+    <div class="d-flex gap-3 align-items-center"><div class="icon-tile mb-0"><i class="bi bi-envelope-heart-fill"></i></div><div>
       <h3 style="margin-bottom:0.4rem;">Get a note when something new drops.</h3>
-      <p class="text-muted-folio" style="margin:0;">New articles, episodes, and updates from Jackylene — no spam, unsubscribe any time.</p>
-    </div>
-    <form class="d-flex gap-2" onsubmit="event.preventDefault(); toast('Thanks — you are on the list.');">
+      <p class="text-muted-folio" style="margin:0;">New articles, episodes, and updates from Jackylene, no spam, unsubscribe any time.</p>
+    </div></div>
+    <form class="d-flex gap-2" onsubmit="event.preventDefault(); toast('Thanks, you are on the list.');">
       <input type="email" required class="form-control" placeholder="you@email.com" style="min-width:240px; border-radius:3px; border:1px solid var(--border-2);">
-      <button class="btn-folio btn-folio-primary">Subscribe</button>
+      <button class="btn-folio btn-folio-primary"><i class="bi bi-send-fill"></i> Subscribe</button>
     </form>
   </div>
 </section>
@@ -75,7 +85,7 @@
 const PLACEHOLDER_COVER = 'https://placehold.co/400x600/f0f0f3/6b6f76?text=Flourish+Hub+Global';
 const PLACEHOLDER_WIDE = 'https://placehold.co/500x375/f0f0f3/6b6f76?text=Flourish+Hub+Global';
 
-// Swap these four for real photos/covers whenever you have them —
+// Swap these four for real photos/covers whenever you have them ,
 // just replace the src on each <img>, same sizes work fine.
 document.getElementById('hero-covers').innerHTML = `
   <img class="tall" src="/assets/images/legend1.jpg" alt="Legend 1">
@@ -83,6 +93,43 @@ document.getElementById('hero-covers').innerHTML = `
   <img src="/assets/images/legend3.jpg" alt="Legend 3">
   <img src="/assets/images/legend4.jpg" alt="Legend 4">
 `;
+
+// ADD MORE IMAGES HERE: just append paths to either list.
+const SLIDES = ['/assets/images/legend1.jpg','/assets/images/legend2.jpg','/assets/images/legend3.jpg','/assets/images/legend4.jpg','/assets/images/author-jackylene-wegoki.jpeg'];
+const GALLERY = [
+  { src: '/assets/images/legend1.jpg', cap: '' }, { src: '/assets/images/author-jackylene-wegoki.jpeg', cap: '' },
+  { src: '/assets/images/legend2.jpg', cap: '' }, { src: '/assets/images/legend3.jpg', cap: '' }, { src: '/assets/images/legend4.jpg', cap: '' }
+];
+
+(function heroSlides() {
+  const box = document.getElementById('hero-slides'), dots = document.getElementById('hs-dots');
+  box.innerHTML = SLIDES.map((s) => `<div class="hs" style="background-image:url('${s}')"></div>`).join('');
+  dots.innerHTML = SLIDES.map((_, i) => `<button aria-label="Go to slide ${i + 1}"></button>`).join('');
+  const hs = [...box.children], ds = [...dots.children]; let i = -1, t;
+  function go(n) {
+    if (i >= 0) { hs[i].classList.remove('on'); ds[i].classList.remove('on'); }
+    i = (n + hs.length) % hs.length; hs[i].classList.add('on'); ds[i].classList.add('on');
+    clearInterval(t); t = setInterval(() => go(i + 1), 6500);
+  }
+  ds.forEach((d, n) => d.onclick = () => go(n));
+  document.getElementById('hs-prev').onclick = () => go(i - 1);
+  document.getElementById('hs-next').onclick = () => go(i + 1);
+  go(0);
+})();
+
+(function gallery() {
+  const g = document.getElementById('gallery');
+  g.innerHTML = GALLERY.map((x) => `<figure class="g-item"><img src="${x.src}" alt="${x.cap || 'Gallery image'}" loading="lazy" onerror="this.onerror=null;this.src=PLACEHOLDER_WIDE">${x.cap ? `<figcaption>${x.cap}</figcaption>` : ''}</figure>`).join('');
+  const step = () => g.clientWidth * 0.6;
+  document.getElementById('g-prev').onclick = () => g.scrollBy({ left: -step(), behavior: 'smooth' });
+  document.getElementById('g-next').onclick = () => g.scrollBy({ left: step(), behavior: 'smooth' });
+  let down = false, sx = 0, sl = 0, hover = false;
+  g.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') return; down = true; sx = e.clientX; sl = g.scrollLeft; g.style.scrollSnapType = 'none'; g.classList.add('drag'); });
+  addEventListener('pointerup', () => { if (!down) return; down = false; g.style.scrollSnapType = ''; g.classList.remove('drag'); });
+  g.addEventListener('pointermove', (e) => { if (down) g.scrollLeft = sl - (e.clientX - sx); });
+  g.addEventListener('mouseenter', () => hover = true); g.addEventListener('mouseleave', () => hover = false);
+  setInterval(() => { if (hover || down || document.hidden) return; g.scrollLeft + g.clientWidth >= g.scrollWidth - 8 ? g.scrollTo({ left: 0, behavior: 'smooth' }) : g.scrollBy({ left: step(), behavior: 'smooth' }); }, 5000);
+})();
 
 function bookCard(book) {
   const cover = book.cover_url || PLACEHOLDER_COVER;
@@ -115,7 +162,7 @@ function podcastCard(pod) {
     <div class="col-md-4">
       <a href="/podcast.html?slug=${encodeURIComponent(pod.slug)}" class="book-card">
         <div class="cover-wrap" style="aspect-ratio:4/3;">
-          <img src="${pod.thumbnail_url || PLACEHOLDER_WIDE}" alt="${escapeHtml(pod.title)}">
+          <img src="${pod.thumbnail_url || PLACEHOLDER_WIDE}" alt="${escapeHtml(pod.title)}"><span class="play-chip"><i class="bi bi-${pod.type==='video'?'camera-video-fill':'headphones'}"></i></span>
         </div>
         ${pod.is_premium ? '<span class="badge-folio premium mb-1">Members</span>' : ''}
         <h3>${escapeHtml(pod.title)}</h3>
@@ -147,5 +194,6 @@ function podcastCard(pod) {
   } catch (e) { document.getElementById('home-podcasts').innerHTML = '<div class="empty-state">Could not load podcasts.</div>'; }
 })();
 </script>
+<script src="/assets/js/motion.js" defer></script>
 </body>
 </html>

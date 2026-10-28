@@ -18,8 +18,17 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ error: 'Invalid data', detail: err.detail || err.message });
   }
 
+  // Uploads over the configured size limit
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'That file is too large to upload' });
+  }
+
   const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Internal server error' });
+  // Do not leak internal error text to visitors in production.
+  const message = status >= 500 && process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : (err.message || 'Internal server error');
+  res.status(status).json({ error: message });
 }
 
 /** Wrap async route handlers so thrown errors reach errorHandler instead of hanging the request. */

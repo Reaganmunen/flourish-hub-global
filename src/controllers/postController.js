@@ -5,7 +5,9 @@ const taxonomyModel = require('../models/taxonomyModel');
 
 async function create(req, res) {
   const body = req.body;
-  const slug = body.slug ? slugify(body.slug, { lower: true }) : slugify(body.title, { lower: true, strict: true });
+  const slug = slugify(body.slug || body.title || '', { lower: true, strict: true });
+  if (!slug) return res.status(400).json({ error: 'A title is required' });
+  if (body.status === 'published' && !body.publishedAt) body.publishedAt = new Date();
 
   const post = await postModel.create({ ...body, slug, authorId: req.admin.id });
 
@@ -16,14 +18,20 @@ async function create(req, res) {
 }
 
 /**
- * Autosave-friendly update — the CMS drag-and-drop editor (Editor.js on
+ * Autosave-friendly update - the CMS drag-and-drop editor (Editor.js on
  * the frontend) calls this repeatedly with just `content` as the user
  * edits, and separately with `status: 'published'` when they hit Publish.
  */
 async function update(req, res) {
   const body = req.body;
-  if (body.slug) body.slug = slugify(body.slug, { lower: true });
-  if (body.status === 'published' && !body.publishedAt) body.publishedAt = new Date();
+  if (body.slug) body.slug = slugify(body.slug, { lower: true, strict: true });
+  // Only stamp the publish date the first time an article goes live. Doing it
+  // on every save moved the date forward each time a published article was
+  // edited or autosaved.
+  if (body.status === 'published' && !body.publishedAt) {
+    const existing = await postModel.findById(req.params.id);
+    if (existing && !existing.published_at) body.publishedAt = new Date();
+  }
 
   const post = await postModel.update(req.params.id, body);
   if (!post) return res.status(404).json({ error: 'Post not found' });
@@ -34,11 +42,15 @@ async function update(req, res) {
   res.json({ post });
 }
 
-/** Admin editor view — always full content, regardless of premium status. */
+/** Admin editor view - always full content, regardless of premium status. */
 async function getById(req, res) {
   const post = await postModel.findById(req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
-  res.json({ post });
+  const [categories, tags] = await Promise.all([
+    taxonomyModel.getCategoriesFor('post', post.id),
+    taxonomyModel.getTagsFor('post', post.id),
+  ]);
+  res.json({ post, categories, tags });
 }
 
 /** Loads the post by slug into req.item for the checkPremiumAccess middleware. */

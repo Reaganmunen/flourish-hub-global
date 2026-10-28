@@ -1,32 +1,37 @@
 /* ============================================================
-   FOLIO HOUSE — cart
+   FlourishHub: cart
    Cart items map directly to the shape orderController.resolveCartItem
    expects: { itemType: 'book'|'post'|'podcast', id, quantity }.
-   Price/title shown here are cached for display only — the backend
+   Price and title shown here are cached for display only. The backend
    always re-resolves the real price at checkout, so a stale cache
    can never be used to under-pay.
    ============================================================ */
 
 const CART_KEY = 'fh_cart';
+const MAX_QTY = 99;
 
 function getCart() {
-  try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]'); }
-  catch (_) { return []; }
+  try {
+    const items = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    return Array.isArray(items) ? items : [];
+  } catch (_) { return []; }
 }
 function saveCart(items) {
-  localStorage.setItem(CART_KEY, JSON.stringify(items));
+  try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (_) { /* storage full or blocked */ }
   updateCartBadge();
 }
-function addToCart({ itemType, id, title, priceCents, image, quantity = 1, maxQty = null }) {
+function addToCart({ itemType, id, title, priceCents, image, quantity = 1, maxQty = null, needsShipping = false }) {
   const cart = getCart();
   const existing = cart.find((i) => i.itemType === itemType && String(i.id) === String(id));
+  const cap = maxQty ? Math.min(maxQty, MAX_QTY) : MAX_QTY;
   // Digital content (post/podcast) only ever needs quantity 1.
   if (itemType !== 'book') {
     if (!existing) cart.push({ itemType, id, title, priceCents, image, quantity: 1 });
   } else if (existing) {
-    existing.quantity = maxQty ? Math.min(existing.quantity + quantity, maxQty) : existing.quantity + quantity;
+    existing.quantity = Math.min(existing.quantity + quantity, cap);
+    existing.needsShipping = !!needsShipping;
   } else {
-    cart.push({ itemType, id, title, priceCents, image, quantity });
+    cart.push({ itemType, id, title, priceCents, image, quantity: Math.min(quantity, cap), needsShipping: !!needsShipping });
   }
   saveCart(cart);
   toast(`Added "${title}" to your bag`);
@@ -42,7 +47,8 @@ function removeFromCart(itemType, id) {
 function setQuantity(itemType, id, qty) {
   const cart = getCart();
   const item = cart.find((i) => i.itemType === itemType && String(i.id) === String(id));
-  if (item) item.quantity = Math.max(1, qty);
+  const n = Number.isFinite(qty) ? Math.floor(qty) : 1;
+  if (item) item.quantity = Math.min(Math.max(1, n), MAX_QTY);
   saveCart(cart);
 }
 function clearCart() { saveCart([]); }

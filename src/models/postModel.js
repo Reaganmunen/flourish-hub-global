@@ -1,7 +1,7 @@
 // src/models/postModel.js
 // `content` and `preview_content` are JSONB arrays of editor blocks, e.g.
 // [{ type: "paragraph", data: { text: "..." } }, { type: "image", data: { media_id: 12 } }]
-// This model doesn't care what's inside a block — that's the CMS
+// This model doesn't care what's inside a block - that's the CMS
 // frontend's job (Editor.js). It just stores/returns the array as-is.
 const { query } = require('../config/db');
 
@@ -53,7 +53,7 @@ async function update(id, data) {
 // media_library). This LEFT JOIN resolves it to a real featured_image_url
 // alongside the id, the same fix applied to bookModel's cover and
 // podcastModel's thumbnail/media. Unlike the podcast media swap, no
-// gating logic is needed here — the featured image is a public thumbnail
+// gating logic is needed here - the featured image is a public thumbnail
 // regardless of is_premium, same as a magazine's cover art showing even
 // though the article inside is behind a paywall.
 

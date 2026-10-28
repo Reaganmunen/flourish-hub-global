@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Articles | Flourish Hub Global</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Article | FlourishHub</title>
+<meta name="description" content="Read an article from FlourishHub.">
+<link rel="icon" href="/assets/images/logo-flourishhub.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -10,56 +14,121 @@
 </head>
 <body>
 <header id="site-header" class="site-header"></header>
-<section class="page-hero">
-  <div class="hero-slides" data-slides="/assets/images/legend3.jpg,/assets/images/legend4.jpg,/assets/images/legend1.jpg" aria-hidden="true"></div>
-  <div class="container-folio ph-inner">
-    <div class="ph-kicker"><i class="bi bi-journal-richtext"></i> The Journal</div>
-    <h1>The Journal</h1>
-    <p class="text-muted-folio">Essays, interviews and behind-the-scenes notes from our editors, some free, some for members.</p>
-  </div>
-</section>
-<div class="container-folio" style="padding:2rem 0 5rem; max-width:920px;">
-  <div id="articles-list"></div>
-  <div class="pager" id="articles-pager"></div>
+
+<div class="container-folio" style="padding:3rem 0 2rem;">
+  <div id="article-detail" class="article-wrap"><div class="empty-state">Loading...</div></div>
 </div>
+<div class="container-folio" style="padding-bottom:3rem;">
+  <div class="article-wrap"><a href="/articles.html" class="see-all"><i class="bi bi-arrow-left"></i> All resources</a></div>
+</div>
+
 <footer id="site-footer" class="site-footer"></footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/cart.js"></script>
 <script>window.ACTIVE_NAV = 'articles';</script>
 <script src="/assets/js/main.js"></script>
 <script>
-const PLACEHOLDER_WIDE = 'https://placehold.co/500x375/f0f0f3/6b6f76?text=Flourish+Hub+Global';
-const PAGE_SIZE = 8;
-let page = 1;
+const slug = new URLSearchParams(location.search).get('slug');
+const accessToken = new URLSearchParams(location.search).get('access_token');
 
-function row(post) {
-  return `
-    <a href="/article.html?slug=${encodeURIComponent(post.slug)}" class="content-row" style="text-decoration:none; color:inherit;">
-      <div class="thumb"><img src="${post.featured_image_url || PLACEHOLDER_WIDE}" alt=""></div>
-      <div>
-        ${post.is_premium ? '<span class="badge-folio premium mb-2">Members</span>' : '<span class="badge-folio soft mb-2">Free</span>'}
-        <h3>${escapeHtml(post.title)}</h3>
-        <div class="meta">${formatDate(post.published_at || post.created_at)}</div>
-        <p class="excerpt">${escapeHtml(post.excerpt || '')}</p>
-      </div>
-    </a>`;
+/* Editor.js stores inline formatting as small HTML snippets (bold, italic, links,
+   highlights). Only a short allowlist of tags is kept, everything else is stripped. */
+const ALLOWED_INLINE = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'MARK', 'CODE', 'A', 'BR', 'SPAN']);
+function cleanInline(html) {
+  const doc = new DOMParser().parseFromString('<body>' + (html || '') + '</body>', 'text/html');
+  (function walk(node) {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType === 1) {
+        if (!ALLOWED_INLINE.has(child.tagName)) { child.replaceWith(document.createTextNode(child.textContent)); return; }
+        Array.from(child.attributes).forEach((a) => {
+          const keep = child.tagName === 'A' && (a.name === 'href' || a.name === 'target' || a.name === 'rel');
+          if (!keep) child.removeAttribute(a.name);
+        });
+        if (child.tagName === 'A') {
+          const href = child.getAttribute('href') || '';
+          if (!/^(https?:|mailto:|\/|#)/i.test(href)) child.removeAttribute('href');
+          child.setAttribute('rel', 'noopener noreferrer');
+        }
+        walk(child);
+      }
+    });
+  })(doc.body);
+  return doc.body.innerHTML;
+}
+
+function safeUrl(u) { return /^(https?:\/\/|\/)/i.test(u || '') ? escapeHtml(u) : ''; }
+
+function renderBlock(b) {
+  const d = b.data || {};
+  switch (b.type) {
+    case 'paragraph': return `<p>${cleanInline(d.text)}</p>`;
+    case 'header': { const l = Math.min(Math.max(Number(d.level) || 2, 2), 4); return `<h${l}>${cleanInline(d.text)}</h${l}>`; }
+    case 'list': {
+      const tag = d.style === 'ordered' ? 'ol' : 'ul';
+      const li = (d.items || []).map((i) => `<li>${cleanInline(typeof i === 'string' ? i : (i && i.content) || '')}</li>`).join('');
+      return `<${tag}>${li}</${tag}>`;
+    }
+    case 'quote': return `<blockquote>${cleanInline(d.text)}${d.caption ? `<cite>${cleanInline(d.caption)}</cite>` : ''}</blockquote>`;
+    case 'delimiter': return '<hr>';
+    case 'table': {
+      const rows = d.content || [];
+      return `<div style="overflow-x:auto;"><table>${rows.map((r, i) => `<tr>${r.map((c) => (d.withHeadings && i === 0 ? `<th>${cleanInline(c)}</th>` : `<td>${cleanInline(c)}</td>`)).join('')}</tr>`).join('')}</table></div>`;
+    }
+    case 'image': {
+      const url = safeUrl(d.file && d.file.url);
+      return url ? `<figure><img src="${url}" alt="${escapeHtml(d.caption || '')}" loading="lazy">${d.caption ? `<figcaption>${cleanInline(d.caption)}</figcaption>` : ''}</figure>` : '';
+    }
+    case 'embed': {
+      const src = /^https:\/\//i.test(d.embed || '') ? escapeHtml(d.embed) : '';
+      return src ? `<figure><div class="embed-frame"><iframe src="${src}" title="${escapeHtml(d.caption || 'Embedded media')}" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>${d.caption ? `<figcaption>${cleanInline(d.caption)}</figcaption>` : ''}</figure>` : '';
+    }
+    default: return '';
+  }
 }
 
 async function load() {
-  const host = document.getElementById('articles-list');
-  host.innerHTML = '<div class="empty-state">Loading articles…</div>';
+  const host = document.getElementById('article-detail');
+  if (!slug) { host.innerHTML = '<div class="empty-state">No article specified.</div>'; return; }
   try {
-    const { posts } = await api('/posts' + qs({ page, pageSize: PAGE_SIZE }), { auth: false });
-    host.innerHTML = posts.length ? posts.map(row).join('') : '<div class="empty-state">No articles published yet.</div>';
-    const pager = document.getElementById('articles-pager');
-    pager.innerHTML = '';
-    const prev = document.createElement('button'); prev.textContent = '← Previous'; prev.disabled = page <= 1;
-    prev.onclick = () => { page--; load(); };
-    const next = document.createElement('button'); next.textContent = 'Next →'; next.disabled = posts.length < PAGE_SIZE;
-    next.onclick = () => { page++; load(); };
-    pager.append(prev, next);
-  } catch (e) { host.innerHTML = '<div class="empty-state">Could not load articles.</div>'; }
+    const path = `/posts/slug/${encodeURIComponent(slug)}` + (accessToken ? qs({ access_token: accessToken }) : '');
+    const { post, categories } = await api(path, { auth: !!AUTH.getCustomerToken() });
+    document.title = `${post.title} | FlourishHub`;
+    const blocks = Array.isArray(post.content) ? post.content : [];
+
+    const lockedPanel = post.locked ? `
+      <div class="locked-panel">
+        <div class="lock-icon"><i class="bi bi-lock"></i></div>
+        <h3>This article is for members</h3>
+        <p class="text-muted-folio">Unlock the full article to keep reading.</p>
+        <div class="d-flex gap-3 justify-content-center mt-3 flex-wrap">
+          ${post.price_cents ? `<button class="btn-folio btn-folio-crimson" id="buy-post-btn">Unlock for ${money(post.price_cents)}</button>` : ''}
+          <a href="/login.html" class="btn-folio btn-folio-outline">Log in</a>
+        </div>
+      </div>` : '';
+
+    host.innerHTML = `
+      <div class="article-head">
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+          ${categories.map((c) => `<span class="badge-folio soft">${escapeHtml(c.name)}</span>`).join('')}
+          ${post.is_premium ? '<span class="badge-folio premium">Members</span>' : ''}
+        </div>
+        <h1>${escapeHtml(post.title)}</h1>
+        ${post.excerpt ? `<p class="text-muted-folio" style="font-size:1.15rem;">${escapeHtml(post.excerpt)}</p>` : ''}
+        <div class="article-meta">${formatDate(post.published_at || post.created_at)}</div>
+      </div>
+      ${post.featured_image_url ? `<img class="article-hero-img" src="${escapeHtml(post.featured_image_url)}" alt="">` : ''}
+      <div class="article-body">${blocks.length ? blocks.map(renderBlock).join('') : (post.locked ? '' : '<p class="text-muted-folio">This article has no content yet.</p>')}</div>
+      ${lockedPanel}`;
+
+    const buy = document.getElementById('buy-post-btn');
+    if (buy) buy.addEventListener('click', () => {
+      addToCart({ itemType: 'post', id: post.id, title: post.title, priceCents: post.price_cents, image: post.featured_image_url });
+      window.location.href = '/cart.html';
+    });
+  } catch (e) {
+    host.innerHTML = '<div class="empty-state">This article could not be found.</div>';
+  }
 }
 load();
 </script>

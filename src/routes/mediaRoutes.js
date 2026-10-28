@@ -6,7 +6,7 @@ const { authenticateAdmin } = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-// Mounted at /api/admin/media — every media action is admin-only.
+// Mounted at /api/admin/media - every media action is admin-only.
 // This is what the CMS block editor calls when you drag an image/video
 // block in and pick a file: it uploads here first, then stores the
 // returned media.id inside the post's content JSON.

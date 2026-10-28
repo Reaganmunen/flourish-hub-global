@@ -10,7 +10,7 @@ const { resolveMediaType, uploadDir } = require('../middleware/upload');
  * `fileUrl` returned points at /uploads/<filename>, which app.js serves
  * statically for PUBLIC files (images, book covers). Podcast media and
  * digital book files are also stored under /uploads on disk, but are
- * only ever handed out through signed/gated routes — never link them
+ * only ever handed out through signed/gated routes - never link them
  * directly in public HTML.
  */
 async function upload(req, res) {

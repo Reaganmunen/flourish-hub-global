@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Articles — Flourish Hub Global</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resources | FlourishHub</title>
+<meta name="description" content="Articles, guides and learning resources on human flourishing, resilience, peacebuilding, leadership, life skills and youth development.">
+<link rel="icon" href="/assets/images/logo-flourishhub.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -10,29 +14,55 @@
 </head>
 <body>
 <header id="site-header" class="site-header"></header>
-<div class="container-folio" style="padding-top:3rem;">
-  <h1 style="font-size:2.1rem;">The Journal</h1>
-  <p class="text-muted-folio" style="max-width:56ch;">Essays, interviews and behind-the-scenes notes from our editors — some free, some for members.</p>
-</div>
-<div class="container-folio" style="padding:2rem 0 5rem; max-width:920px;">
+
+<section class="page-hero">
+  <div class="hero-slides" data-slides="/assets/images/legend3.jpg,/assets/images/legend4.jpg,/assets/images/legend1.jpg" aria-hidden="true"></div>
+  <div class="container-folio ph-inner">
+    <div class="ph-kicker"><i class="bi bi-journal-richtext"></i> Resources</div>
+    <h1>Articles and guides</h1>
+    <p class="text-muted-folio">Practical ideas, learning materials and reflections that help people grow and lead with purpose. Some are free and some are for members.</p>
+  </div>
+</section>
+
+<section class="container-folio" style="padding-top:2.5rem;">
+  <div class="feature-grid four" style="margin-bottom:1rem;">
+    <div class="feature-card" style="padding:1.2rem;"><h4 style="margin:0 0 0.3rem;">Human flourishing</h4><p style="margin:0; font-size:0.9rem;">Resilience and personal development.</p></div>
+    <div class="feature-card" style="padding:1.2rem;"><h4 style="margin:0 0 0.3rem;">Peace and leadership</h4><p style="margin:0; font-size:0.9rem;">Peacebuilding and leadership learning.</p></div>
+    <div class="feature-card" style="padding:1.2rem;"><h4 style="margin:0 0 0.3rem;">Life skills</h4><p style="margin:0; font-size:0.9rem;">Communication tips and everyday skills.</p></div>
+    <div class="feature-card" style="padding:1.2rem;"><h4 style="margin:0 0 0.3rem;">Youth and careers</h4><p style="margin:0; font-size:0.9rem;">Mentorship and career development.</p></div>
+  </div>
+</section>
+
+<div class="container-folio" style="padding:2rem 0 3rem; max-width:920px;">
   <div id="articles-list"></div>
   <div class="pager" id="articles-pager"></div>
 </div>
+
+<section class="container-folio" style="padding-bottom:2rem;">
+  <div class="panel" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1.2rem;">
+    <div>
+      <h4 style="margin-bottom:0.3rem;">More ways to learn</h4>
+      <p class="text-muted-folio" style="margin:0;">Listen to our podcasts, or browse books in the shop. We publish original or properly licensed material only.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap"><a href="/podcasts.html" class="btn-folio btn-folio-outline btn-folio-sm">Podcasts</a><a href="/shop.html" class="btn-folio btn-folio-outline btn-folio-sm">Shop books</a></div>
+  </div>
+</section>
+
 <footer id="site-footer" class="site-footer"></footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script src="/assets/js/api.js"></script>
 <script src="/assets/js/cart.js"></script>
 <script>window.ACTIVE_NAV = 'articles';</script>
 <script src="/assets/js/main.js"></script>
 <script>
-const PLACEHOLDER_WIDE = 'https://placehold.co/500x375/f0f0f3/6b6f76?text=Flourish+Hub+Global';
+const PLACEHOLDER_WIDE = 'https://placehold.co/500x375/f0f0f3/6b6f76?text=FlourishHub';
 const PAGE_SIZE = 8;
 let page = 1;
 
 function row(post) {
   return `
     <a href="/article.html?slug=${encodeURIComponent(post.slug)}" class="content-row" style="text-decoration:none; color:inherit;">
-      <div class="thumb"><img src="${post.featured_image_url || PLACEHOLDER_WIDE}" alt=""></div>
+      <div class="thumb"><img src="${escapeHtml(post.featured_image_url || PLACEHOLDER_WIDE)}" alt=""></div>
       <div>
         ${post.is_premium ? '<span class="badge-folio premium mb-2">Members</span>' : '<span class="badge-folio soft mb-2">Free</span>'}
         <h3>${escapeHtml(post.title)}</h3>
@@ -44,20 +74,23 @@ function row(post) {
 
 async function load() {
   const host = document.getElementById('articles-list');
-  host.innerHTML = '<div class="empty-state">Loading articles…</div>';
+  host.innerHTML = '<div class="empty-state">Loading articles...</div>';
   try {
     const { posts } = await api('/posts' + qs({ page, pageSize: PAGE_SIZE }), { auth: false });
-    host.innerHTML = posts.length ? posts.map(row).join('') : '<div class="empty-state">No articles published yet.</div>';
+    host.innerHTML = posts.length ? posts.map(row).join('') : '<div class="empty-state">No articles published yet. Please check back soon.</div>';
     const pager = document.getElementById('articles-pager');
     pager.innerHTML = '';
-    const prev = document.createElement('button'); prev.textContent = '← Previous'; prev.disabled = page <= 1;
-    prev.onclick = () => { page--; load(); };
-    const next = document.createElement('button'); next.textContent = 'Next →'; next.disabled = posts.length < PAGE_SIZE;
-    next.onclick = () => { page++; load(); };
-    pager.append(prev, next);
+    if (page > 1 || posts.length >= PAGE_SIZE) {
+      const prev = document.createElement('button'); prev.textContent = '\u2190 Previous'; prev.disabled = page <= 1;
+      prev.onclick = () => { page--; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      const next = document.createElement('button'); next.textContent = 'Next \u2192'; next.disabled = posts.length < PAGE_SIZE;
+      next.onclick = () => { page++; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      pager.append(prev, next);
+    }
   } catch (e) { host.innerHTML = '<div class="empty-state">Could not load articles.</div>'; }
 }
 load();
 </script>
+<script src="/assets/js/motion.js" defer></script>
 </body>
 </html>

@@ -19,10 +19,13 @@ function refreshExpiryDate() {
  * via a one-off script, since nobody is authenticated to call this yet.
  */
 async function register(req, res) {
-  const { email, password, fullName, role } = req.body;
+  const { password, fullName, role } = req.body;
+  const email = String(req.body.email || '').trim().toLowerCase();
   if (!email || !password || !fullName) {
     return res.status(400).json({ error: 'email, password and fullName are required' });
   }
+  if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (role && !['owner', 'editor'].includes(role)) return res.status(400).json({ error: 'role must be owner or editor' });
   const existing = await adminModel.findByEmail(email);
   if (existing) return res.status(409).json({ error: 'Email already in use' });
 

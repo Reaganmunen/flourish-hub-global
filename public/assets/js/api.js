@@ -1,5 +1,5 @@
 /* ============================================================
-   FOLIO HOUSE — API client
+   FlourishHub API client
    Talks to the Express backend at /api. Assumes this frontend is
    served from the same origin (see app.js commented-out static
    mount) so relative URLs + cookies (for admin refresh) just work.
@@ -10,15 +10,35 @@ const API_BASE = '/api';
 // ---- token storage ----
 // Admin session lives in sessionStorage (short-lived, per-tab).
 // Customer session lives in localStorage (persist across visits).
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) { return null; }
+}
+function readSessionJson(key) {
+  try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch (_) { return null; }
+}
+// True when a JWT's exp claim has passed. Used so a stale customer login is
+// dropped locally instead of the site showing "logged in" while every
+// request is silently treated as a guest.
+function tokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return !!payload.exp && payload.exp * 1000 < Date.now();
+  } catch (_) { return false; }
+}
+
 const AUTH = {
   getAdminToken: () => sessionStorage.getItem('fh_admin_token'),
   setAdminToken: (t) => t ? sessionStorage.setItem('fh_admin_token', t) : sessionStorage.removeItem('fh_admin_token'),
-  getAdmin: () => JSON.parse(sessionStorage.getItem('fh_admin') || 'null'),
+  getAdmin: () => readSessionJson('fh_admin'),
   setAdmin: (a) => a ? sessionStorage.setItem('fh_admin', JSON.stringify(a)) : sessionStorage.removeItem('fh_admin'),
 
-  getCustomerToken: () => localStorage.getItem('fh_customer_token'),
+  getCustomerToken() {
+    const t = localStorage.getItem('fh_customer_token');
+    if (t && tokenExpired(t)) { this.logoutCustomer(); return null; }
+    return t;
+  },
   setCustomerToken: (t) => t ? localStorage.setItem('fh_customer_token', t) : localStorage.removeItem('fh_customer_token'),
-  getCustomer: () => JSON.parse(localStorage.getItem('fh_customer') || 'null'),
+  getCustomer() { return this.getCustomerToken() ? readJson('fh_customer') : null; },
   setCustomer: (c) => c ? localStorage.setItem('fh_customer', JSON.stringify(c)) : localStorage.removeItem('fh_customer'),
 
   logoutCustomer() { this.setCustomerToken(null); this.setCustomer(null); },
@@ -56,6 +76,10 @@ async function api(path, opts = {}) {
     const refreshed = await tryRefreshAdmin();
     if (refreshed) return api(path, { ...opts, retry: false });
   }
+
+  // A rejected customer token means the login has lapsed. Clear it so the
+  // header, cart and account page all agree the visitor is logged out.
+  if (res.status === 401 && !admin && auth && AUTH.getCustomerToken()) AUTH.logoutCustomer();
 
   if (!res.ok) {
     const err = new Error((data && data.error) || `Request failed (${res.status})`);

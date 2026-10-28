@@ -30,7 +30,7 @@ function requireRole(...roles) {
 
 /**
  * Customer auth is OPTIONAL almost everywhere because guest checkout is
- * supported. This middleware never rejects the request — it just attaches
+ * supported. This middleware never rejects the request - it just attaches
  * req.customer if a valid token is present, so downstream code can branch
  * on "logged in vs guest".
  */
@@ -43,7 +43,7 @@ function attachCustomerIfPresent(req, res, next) {
     const payload = verifyAccessToken(token);
     if (payload.type === 'customer') req.customer = { id: payload.sub, email: payload.email };
   } catch (_) {
-    // Bad/expired token on an optional route — just proceed as a guest.
+    // Bad/expired token on an optional route - just proceed as a guest.
   }
   next();
 }

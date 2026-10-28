@@ -5,7 +5,9 @@ const taxonomyModel = require('../models/taxonomyModel');
 
 async function create(req, res) {
   const body = req.body;
-  const slug = body.slug ? slugify(body.slug, { lower: true }) : slugify(body.title, { lower: true, strict: true });
+  const slug = slugify(body.slug || body.title || '', { lower: true, strict: true });
+  if (!slug) return res.status(400).json({ error: 'A title is required' });
+  if (body.status === 'published' && !body.publishedAt) body.publishedAt = new Date();
 
   const podcast = await podcastModel.create({ ...body, slug, uploadedBy: req.admin.id });
 
@@ -17,8 +19,11 @@ async function create(req, res) {
 
 async function update(req, res) {
   const body = req.body;
-  if (body.slug) body.slug = slugify(body.slug, { lower: true });
-  if (body.status === 'published' && !body.publishedAt) body.publishedAt = new Date();
+  if (body.slug) body.slug = slugify(body.slug, { lower: true, strict: true });
+  if (body.status === 'published' && !body.publishedAt) {
+    const existing = await podcastModel.findById(req.params.id);
+    if (existing && !existing.published_at) body.publishedAt = new Date();
+  }
 
   const podcast = await podcastModel.update(req.params.id, body);
   if (!podcast) return res.status(404).json({ error: 'Podcast not found' });
@@ -32,7 +37,11 @@ async function update(req, res) {
 async function getById(req, res) {
   const podcast = await podcastModel.findById(req.params.id);
   if (!podcast) return res.status(404).json({ error: 'Podcast not found' });
-  res.json({ podcast });
+  const [categories, tags] = await Promise.all([
+    taxonomyModel.getCategoriesFor('podcast', podcast.id),
+    taxonomyModel.getTagsFor('podcast', podcast.id),
+  ]);
+  res.json({ podcast, categories, tags });
 }
 
 async function loadPodcastBySlug(req, res, next) {
@@ -43,11 +52,11 @@ async function loadPodcastBySlug(req, res, next) {
 }
 
 /**
- * Public detail — swaps media_id for preview_media_id when the viewer lacks
+ * Public detail - swaps media_id for preview_media_id when the viewer lacks
  * access, and (now that podcastModel resolves ids to real URLs) does the
  * same for media_url/preview_media_url. This second swap matters: without
  * it, a locked episode's payload would still carry the FULL episode's
- * playable URL even while media_id correctly pointed at the preview —
+ * playable URL even while media_id correctly pointed at the preview -
  * the frontend would only need to read the wrong field to bypass the gate.
  */
 async function getPublicBySlug(req, res) {

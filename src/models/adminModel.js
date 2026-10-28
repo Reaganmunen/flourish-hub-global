@@ -12,7 +12,7 @@ async function create({ email, passwordHash, fullName, role = 'editor' }) {
 }
 
 async function findByEmail(email) {
-  const { rows } = await query(`SELECT * FROM admin_users WHERE email = $1`, [email]);
+  const { rows } = await query(`SELECT * FROM admin_users WHERE lower(email) = lower($1)`, [email]);
   return rows[0] || null;
 }
 

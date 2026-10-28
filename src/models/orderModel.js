@@ -13,7 +13,20 @@ function generateOrderNumber() {
  * `items` = [{ itemType, bookId?, postId?, podcastId?, titleSnapshot,
  *              unitPriceCents, quantity, isDigital }]
  */
-async function createWithItems({ customerId, guestEmail, guestFullName, items, shippingAddress, billingAddress, shippingCents = 0, taxCents = 0, currency = 'USD' }) {
+async function createWithItems(args) {
+  // Order numbers are random 6 digit values, so two orders can occasionally
+  // collide. Retry with a fresh number instead of failing the checkout.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return await insertOrder(args);
+    } catch (err) {
+      const isNumberClash = err.code === '23505' && /order_number/.test(`${err.constraint || ''} ${err.detail || ''}`);
+      if (!isNumberClash || attempt === 4) throw err;
+    }
+  }
+}
+
+async function insertOrder({ customerId, guestEmail, guestFullName, items, shippingAddress, billingAddress, shippingCents = 0, taxCents = 0, currency = 'USD' }) {
   return withTransaction(async (client) => {
     const subtotal = items.reduce((sum, it) => sum + it.unitPriceCents * it.quantity, 0);
     const total = subtotal + shippingCents + taxCents;

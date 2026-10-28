@@ -1,7 +1,7 @@
 // src/controllers/orderController.js
 // The single most important security rule in this whole checkout flow:
 // NEVER trust a price or title sent by the client. The cart in the
-// request body only supplies { itemType, id, quantity } — we look up
+// request body only supplies { itemType, id, quantity } - we look up
 // the current price/title/digital-flag from the DB ourselves before
 // building the order. Otherwise anyone could POST { priceCents: 1 }.
 const orderModel = require('../models/orderModel');
@@ -11,8 +11,19 @@ const podcastModel = require('../models/podcastModel');
 const customerModel = require('../models/customerModel');
 const { createCheckoutSession } = require('../utils/stripe');
 
+const MAX_QTY_PER_ITEM = 99;
+// Flat shipping for physical books, set on the server so the browser can
+// never choose its own shipping amount. Default 0 keeps current behaviour.
+const SHIPPING_FLAT_CENTS = Number(process.env.SHIPPING_FLAT_CENTS) || 0;
+
 async function resolveCartItem(cartItem) {
-  const { itemType, id, quantity = 1 } = cartItem;
+  const { itemType, id } = cartItem;
+  const quantity = Number(cartItem.quantity === undefined ? 1 : cartItem.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY_PER_ITEM) {
+    const err = new Error('Quantity must be a whole number between 1 and ' + MAX_QTY_PER_ITEM);
+    err.status = 400;
+    throw err;
+  }
 
   if (itemType === 'book') {
     const book = await bookModel.findById(id);
@@ -56,7 +67,8 @@ function badItem(id) {
 }
 
 async function checkout(req, res) {
-  const { items, guestEmail, guestFullName, shippingAddress, billingAddress, shippingCents } = req.body;
+  const { items, guestFullName, shippingAddress, billingAddress } = req.body;
+  const guestEmail = req.body.guestEmail ? String(req.body.guestEmail).trim().toLowerCase() : '';
   if (!Array.isArray(items) || !items.length) {
     return res.status(400).json({ error: 'items array is required' });
   }
@@ -65,19 +77,22 @@ async function checkout(req, res) {
   let emailForOrder = req.customer?.email || guestEmail;
 
   if (!customerId && !guestEmail) {
-    return res.status(400).json({ error: 'guestEmail is required for guest checkout' });
+    return res.status(400).json({ error: 'Please enter your email address to check out as a guest' });
   }
   if (!customerId && guestEmail) {
     // Attach a lightweight customer record even for guests, so
     // content_access / order history has somewhere to live if they
     // register later with the same email.
-    const guest = await customerModel.findOrCreateGuest(guestEmail, guestFullName);
-    // Intentionally NOT setting customerId here — guest checkouts stay
+    await customerModel.findOrCreateGuest(guestEmail, guestFullName);
+    // Intentionally NOT setting customerId here: guest checkouts stay
     // guest_email-based until the person actually creates a password.
   }
 
   const resolvedItems = await Promise.all(items.map(resolveCartItem));
   const anyPhysical = resolvedItems.some((it) => it.itemType === 'book' && !it.isDigital);
+  if (anyPhysical && !(shippingAddress && shippingAddress.line1 && shippingAddress.city && shippingAddress.country)) {
+    return res.status(400).json({ error: 'A shipping address is required for physical books' });
+  }
 
   const { order, items: orderItems } = await orderModel.createWithItems({
     customerId,
@@ -86,7 +101,7 @@ async function checkout(req, res) {
     items: resolvedItems,
     shippingAddress: anyPhysical ? shippingAddress : null,
     billingAddress,
-    shippingCents: anyPhysical ? Number(shippingCents) || 0 : 0,
+    shippingCents: anyPhysical ? SHIPPING_FLAT_CENTS : 0,
   });
 
   const session = await createCheckoutSession(order, orderItems);
@@ -99,13 +114,25 @@ async function getByOrderNumber(req, res) {
   const order = await orderModel.findByOrderNumber(req.params.orderNumber);
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
-  // Guests can look up their own order by number + email, to avoid
-  // exposing arbitrary orders to anyone who guesses a number.
-  if (!req.customer && req.query.email !== order.guest_email) {
-    return res.status(403).json({ error: 'Email confirmation required to view this order' });
-  }
-  if (req.customer && order.customer_id && order.customer_id !== req.customer.id) {
-    return res.status(403).json({ error: 'Not your order' });
+  // Anyone can look an order up with its number plus the email on it, to
+  // avoid exposing arbitrary orders to people who guess a number. The email
+  // on the order is the guest email, or the account email for orders placed
+  // while logged in (those have no guest_email, which used to make them
+  // impossible to look up).
+  if (req.customer) {
+    if (order.customer_id && String(order.customer_id) !== String(req.customer.id)) {
+      return res.status(403).json({ error: 'Not your order' });
+    }
+  } else {
+    let orderEmail = order.guest_email;
+    if (!orderEmail && order.customer_id) {
+      const owner = await customerModel.findById(order.customer_id);
+      orderEmail = owner && owner.email;
+    }
+    const given = String(req.query.email || '').trim().toLowerCase();
+    if (!given || !orderEmail || given !== String(orderEmail).trim().toLowerCase()) {
+      return res.status(403).json({ error: 'Email confirmation required to view this order' });
+    }
   }
 
   const items = await orderModel.getItems(order.id);

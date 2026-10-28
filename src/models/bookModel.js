@@ -50,7 +50,7 @@ async function update(id, data) {
 // NOTE on the cover_url / cover joins below:
 // books only stores cover_image_id (a foreign key into media_library).
 // Without this join, the API only ever returns that numeric id, and the
-// storefront has no way to know what image it points at — it silently
+// storefront has no way to know what image it points at - it silently
 // falls back to a placeholder no matter what's actually uploaded. The
 // LEFT JOIN resolves it to a real, directly-usable URL alongside the id.
 // digital_file_id is deliberately NOT joined here: that file is only meant
@@ -133,7 +133,7 @@ async function decrementStock(id, qty) {
      WHERE id = $1 AND physical_stock_qty >= $2 RETURNING *`,
     [id, qty]
   );
-  return rows[0] || null; // null means insufficient stock — caller should treat as out-of-stock
+  return rows[0] || null; // null means insufficient stock - caller should treat as out-of-stock
 }
 
 module.exports = { create, update, findById, findBySlug, list, remove, decrementStock };

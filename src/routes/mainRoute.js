@@ -3,7 +3,7 @@
 // single file at /api. Adding a new resource later = one require + one
 // router.use() line here, nothing to touch in app.js or server.js.
 //
-// NOTE: webhookRoutes is deliberately NOT included here — it needs a
+// NOTE: webhookRoutes is deliberately NOT included here - it needs a
 // raw-body parser instead of the JSON body-parser this main tree sits
 // behind, so app.js mounts it separately, before express.json().
 const express = require('express');
@@ -18,5 +18,7 @@ router.use('/podcasts', require('./podcastRoutes'));
 router.use('/orders', require('./orderRoutes'));
 router.use('/downloads', require('./downloadRoutes'));
 router.use('/taxonomy', require('./taxonomyRoutes'));
+router.use('/gallery', require('./galleryRoutes'));
+router.use('/contact', require('./contactRoutes'));
 
 module.exports = router;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">New article — Flourish Hub Global Admin</title>
+<title id="page-title">New article | FlourishHub Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -34,12 +34,12 @@
       <div>
         <input id="title-input" placeholder="Article title">
         <textarea id="excerpt-input" rows="2" placeholder="One or two lines for the article listing…"></textarea>
-        <p class="editor-toolbar-note">Click on a new line, then the <strong>+</strong> button to add a block — heading, image, quote, list, table, embed and more. Drag the ⠿ handle on the left of any block to reorder it.</p>
+        <p class="editor-toolbar-note">Click on a new line, then the <strong>+</strong> button to add a block such as a heading, image, quote, list, table, embed and more. Drag the ⠿ handle on the left of any block to reorder it.</p>
         <div id="editorjs"></div>
 
         <div id="preview-editor-wrap" style="display:none; margin-top:2.5rem;">
           <hr class="rule">
-          <h4>Preview content <span class="text-muted-folio" style="font-weight:400; font-size:0.85rem;">— shown to non-members before the paywall</span></h4>
+          <h4>Preview content <span class="text-muted-folio" style="font-weight:400; font-size:0.85rem;">(shown to non-members before the paywall)</span></h4>
           <div id="editorjs-preview" style="margin-top:1rem;"></div>
         </div>
       </div>
@@ -91,7 +91,7 @@
 <script src="/assets/js/admin.js"></script>
 <script>window.ACTIVE_ADMIN_NAV = 'posts';</script>
 
-<!-- Editor.js core + block tools (drag-to-reorder, "+" block inserter — Word-style block editing) -->
+<!-- Editor.js core + block tools (drag-to-reorder, "+" block inserter, Word-style block editing) -->
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.5"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.7"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@1.10.0"></script>
@@ -168,8 +168,8 @@ async function loadTaxonomy(selectedCats = [], selectedTags = []) {
 }
 
 async function loadExisting() {
-  const { post } = await api(`/posts/manage/${id}`, { admin: true });
-  document.getElementById('page-title').textContent = `Edit ${post.title} — Flourish Hub Global Admin`;
+  const { post, categories, tags } = await api(`/posts/manage/${id}`, { admin: true });
+  document.getElementById('page-title').textContent = `Edit ${post.title} | FlourishHub Admin`;
   document.getElementById('title-input').value = post.title || '';
   document.getElementById('excerpt-input').value = post.excerpt || '';
   document.getElementById('f-type').value = post.type || 'blog';
@@ -197,14 +197,12 @@ async function loadExisting() {
     }
   }
 
-  // Note: postController.getById only returns { post } — the API has no
-  // route that reports which categories/tags are already on a post, so
-  // the checkboxes below can't be pre-checked on an existing article.
-  // Re-tick anything relevant and save once to reattach it.
-  await loadTaxonomy();
+  // The API now reports which categories and tags are on the article, so the
+  // checkboxes start ticked and saving no longer clears them.
+  await loadTaxonomy((categories || []).map((c) => c.id), (tags || []).map((t) => t.id));
 }
 
-async function save(status) {
+async function save(status, silent = false) {
   const btn = status === 'published' ? document.getElementById('publish-btn') : document.getElementById('save-draft-btn');
   btn.disabled = true;
   document.getElementById('save-state').textContent = 'Saving…';
@@ -217,6 +215,10 @@ async function save(status) {
 
     const title = document.getElementById('title-input').value.trim();
     if (!title) { toast('Give the article a title first', false); btn.disabled = false; document.getElementById('save-state').textContent = ''; return; }
+    if (document.getElementById('f-premium').checked && !document.getElementById('f-price').value) {
+      if (!silent) toast('Members-only articles need a price', false);
+      btn.disabled = false; document.getElementById('save-state').textContent = ''; return;
+    }
 
     const payload = {
       title,
@@ -244,7 +246,7 @@ async function save(status) {
     }
     currentStatus = status;
     document.getElementById('save-state').textContent = status === 'published' ? 'Published' : 'Draft saved';
-    toast(status === 'published' ? 'Article published' : 'Draft saved');
+    if (!silent) toast(status === 'published' ? 'Article published' : 'Draft saved');
   } catch (e) {
     toast(e.message || 'Could not save', false);
     document.getElementById('save-state').textContent = '';
@@ -255,10 +257,10 @@ document.getElementById('save-draft-btn').addEventListener('click', () => save('
 document.getElementById('publish-btn').addEventListener('click', () => save('published'));
 
 // Autosave every 30s once the article exists, keeping whatever status
-// (draft/published) it already has — matches the CMS editor calling PUT
-// repeatedly on every autosave, per the comment in postController.js.
+// (draft/published) it already has. Autosaves are silent so the editor is
+// not interrupted by a toast every half minute.
 setInterval(() => {
-  if (id && document.getElementById('title-input').value.trim()) save(currentStatus);
+  if (id && document.getElementById('title-input').value.trim()) save(currentStatus, true);
 }, 30000);
 
 (async function () {

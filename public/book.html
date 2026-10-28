@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">Book — Flourish Hub Global</title>
+<title id="page-title">Book | FlourishHub</title>
+<meta name="description" content="Book details from the FlourishHub shop.">
+<link rel="icon" href="/assets/images/logo-flourishhub.jpeg">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -16,7 +18,7 @@
   <div class="empty-state">Loading…</div>
 </div>
 
-<section class="container-folio" style="padding-bottom:5rem;">
+<section class="container-folio" style="padding-bottom:5rem;" id="related-section">
   <div class="section-head"><h2>You might also like</h2></div>
   <div class="card-grid" id="related-books"></div>
 </section>
@@ -29,13 +31,13 @@
 <script>window.ACTIVE_NAV = 'shop';</script>
 <script src="/assets/js/main.js"></script>
 <script>
-const PLACEHOLDER_COVER = 'https://placehold.co/500x750/f0f0f3/6b6f76?text=Flourish+Hub+Global';
+const PLACEHOLDER_COVER = 'https://placehold.co/500x750/f0f0f3/6b6f76?text=FlourishHub';
 const slug = new URLSearchParams(location.search).get('slug');
 
 function bookCardMini(book) {
   return `
     <a href="/book.html?slug=${encodeURIComponent(book.slug)}" class="book-card">
-      <div class="cover-wrap"><img src="${book.cover_url || PLACEHOLDER_COVER}" alt="${escapeHtml(book.title)}"></div>
+      <div class="cover-wrap"><img src="${escapeHtml(book.cover_url || PLACEHOLDER_COVER)}" alt="${escapeHtml(book.title)}"></div>
       <h3>${escapeHtml(book.title)}</h3>
       <div class="by-line">${escapeHtml(book.book_author_name || '')}</div>
       <div class="price">${money(book.price_cents, book.currency)}</div>
@@ -47,7 +49,7 @@ async function load() {
   if (!slug) { host.innerHTML = '<div class="empty-state">No book specified.</div>'; return; }
   try {
     const { book, categories, tags } = await api(`/books/slug/${encodeURIComponent(slug)}`, { auth: false });
-    document.getElementById('page-title').textContent = `${book.title} — Flourish Hub Global`;
+    document.getElementById('page-title').textContent = `${book.title} | FlourishHub`;
 
     const format = book.is_digital && book.is_physical ? 'Print + digital' : (book.is_digital ? 'Digital edition' : 'Print edition');
     const stockNote = (!book.is_digital || book.is_physical) && book.physical_stock_qty !== null
@@ -58,7 +60,7 @@ async function load() {
       <div class="row g-5">
         <div class="col-md-5">
           <div class="cover-wrap" style="aspect-ratio:2/3; border:1px solid var(--border);">
-            <img src="${book.cover_url || PLACEHOLDER_COVER}" alt="${escapeHtml(book.title)}" style="width:100%; height:100%; object-fit:cover;">
+            <img src="${escapeHtml(book.cover_url || PLACEHOLDER_COVER)}" alt="${escapeHtml(book.title)}" style="width:100%; height:100%; object-fit:cover;">
           </div>
         </div>
         <div class="col-md-7">
@@ -75,7 +77,7 @@ async function load() {
           ${stockNote ? `<p class="text-muted-folio" style="font-size:0.88rem;">${stockNote}</p>` : ''}
           <div class="d-flex gap-3 my-4">
             <button class="btn-folio btn-folio-primary" id="add-cart-btn">Add to bag</button>
-            <a href="/cart.html" class="btn-folio btn-folio-outline" id="buy-now-btn">Buy now</a>
+            <button class="btn-folio btn-folio-outline" id="buy-now-btn">Buy now</button>
           </div>
           <hr class="rule" style="margin:2rem 0;">
           <h3>About this book</h3>
@@ -86,24 +88,36 @@ async function load() {
       </div>`;
 
     const outOfStock = stockNote === 'Out of stock';
-    document.getElementById('add-cart-btn').disabled = outOfStock;
-    if (outOfStock) document.getElementById('add-cart-btn').textContent = 'Out of stock';
-    document.getElementById('add-cart-btn').addEventListener('click', () => {
-      addToCart({ itemType: 'book', id: book.id, title: book.title, priceCents: book.price_cents, image: book.cover_url, quantity: 1 });
-    });
+    const addBtn = document.getElementById('add-cart-btn');
+    const buyBtn = document.getElementById('buy-now-btn');
+    addBtn.disabled = outOfStock;
+    buyBtn.disabled = outOfStock;
+    if (outOfStock) addBtn.textContent = 'Out of stock';
 
+    // Limit the quantity to what is in stock for print-only titles.
+    const limitedStock = book.is_physical && !book.is_digital && book.physical_stock_qty !== null ? book.physical_stock_qty : null;
+    const add = () => addToCart({
+      itemType: 'book', id: book.id, title: book.title, priceCents: book.price_cents,
+      image: book.cover_url, quantity: 1, maxQty: limitedStock, needsShipping: !!book.is_physical,
+    });
+    addBtn.addEventListener('click', add);
+    buyBtn.addEventListener('click', () => { add(); window.location.href = '/cart.html'; });
+
+    const relatedSection = document.getElementById('related-section');
+    let related = [];
     if (categories[0]) {
-      const { books } = await api('/books' + qs({ categoryId: categories[0].id, pageSize: 4 }), { auth: false });
-      const related = books.filter((b) => b.id !== book.id).slice(0, 4);
-      document.getElementById('related-books').innerHTML = related.length
-        ? related.map(bookCardMini).join('')
-        : '<div class="empty-state">More titles coming soon.</div>';
+      const { books } = await api('/books' + qs({ categoryId: categories[0].id, pageSize: 5 }), { auth: false });
+      related = books.filter((b) => b.id !== book.id).slice(0, 4);
     }
+    if (related.length) document.getElementById('related-books').innerHTML = related.map(bookCardMini).join('');
+    else relatedSection.style.display = 'none';
   } catch (e) {
     host.innerHTML = '<div class="empty-state">This book could not be found.</div>';
+    document.getElementById('related-section').style.display = 'none';
   }
 }
 load();
 </script>
+<script src="/assets/js/motion.js" defer></script>
 </body>
 </html>

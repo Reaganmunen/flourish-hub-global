@@ -42,13 +42,13 @@ async function update(id, data) {
   return rows[0] || null;
 }
 
-// NOTE: podcasts only stores media_id / thumbnail_id / preview_media_id —
+// NOTE: podcasts only stores media_id / thumbnail_id / preview_media_id -
 // foreign keys into media_library, not usable URLs. These LEFT JOINs
 // resolve each one to a real file_url alongside its id, so both the
 // storefront (thumbnails, the actual <audio>/<video> source) and the
 // admin edit form (existing-thumbnail preview) have something to render.
 // media_url/preview_media_url are exposed here regardless of premium
-// status — podcastController.getPublicBySlug is what's responsible for
+// status - podcastController.getPublicBySlug is what's responsible for
 // swapping media_url -> preview_media_url (and stripping the full one)
 // when the viewer doesn't have access, exactly as it already does for
 // media_id. See the matching note in that controller.

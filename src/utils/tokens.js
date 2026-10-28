@@ -6,9 +6,9 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-function signAccessToken(payload) {
+function signAccessToken(payload, expiresIn) {
   return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m',
+    expiresIn: expiresIn || process.env.JWT_ACCESS_EXPIRES || '15m',
   });
 }
 
@@ -31,7 +31,7 @@ function generateOpaqueToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('hex');
 }
 
-/** SHA-256 hash — we store hashes of refresh tokens, never the raw value. */
+/** SHA-256 hash - we store hashes of refresh tokens, never the raw value. */
 function hashToken(rawToken) {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
 }

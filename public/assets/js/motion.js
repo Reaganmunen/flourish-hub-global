@@ -1,4 +1,4 @@
-/* Flourish Hub Global — motion layer. Safe to load on every page. */
+/* FlourishHub motion layer. Safe to load on every page. */
 (function () {
   if ('onpagereveal' in window) document.documentElement.classList.add('vt');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;

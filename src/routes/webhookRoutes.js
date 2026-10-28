@@ -1,7 +1,7 @@
 // src/routes/webhookRoutes.js
 // Kept as its own router (not merged into mainRoute's json-parsed tree)
 // because Stripe signature verification needs the EXACT raw request
-// body bytes. app.js mounts this BEFORE express.json() runs on it —
+// body bytes. app.js mounts this BEFORE express.json() runs on it -
 // see the comment there.
 const express = require('express');
 const router = express.Router();

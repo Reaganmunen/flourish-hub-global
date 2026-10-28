@@ -5,7 +5,7 @@ const { generateOpaqueToken } = require('../utils/tokens');
 /**
  * Grant access after a payment succeeds. Logged-in customers get a
  * permanent grant (expires_at NULL). Guests get a bearer access_token
- * with an expiry — the checkout confirmation email carries a link
+ * with an expiry - the checkout confirmation email carries a link
  * containing this token so they don't need an account.
  */
 async function grant({ orderItemId, customerId, guestEmail, contentType, postId, podcastId, guestExpiryDays = 30 }) {

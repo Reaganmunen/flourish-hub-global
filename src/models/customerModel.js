@@ -12,7 +12,7 @@ async function create({ email, passwordHash = null, fullName = null, phone = nul
 }
 
 async function findByEmail(email) {
-  const { rows } = await query(`SELECT * FROM customers WHERE email = $1`, [email]);
+  const { rows } = await query(`SELECT * FROM customers WHERE lower(email) = lower($1)`, [email]);
   return rows[0] || null;
 }
 
@@ -26,9 +26,10 @@ async function findById(id) {
 
 /** Find an existing customer by email, or create a bare record (no password = guest-only account). */
 async function findOrCreateGuest(email, fullName = null) {
-  const existing = await findByEmail(email);
+  const clean = String(email).trim().toLowerCase();
+  const existing = await findByEmail(clean);
   if (existing) return existing;
-  return create({ email, fullName });
+  return create({ email: clean, fullName });
 }
 
 async function addAddress(customerId, addr) {

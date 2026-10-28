@@ -6,7 +6,7 @@ const { authenticateAdmin } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 // Mounted once at /api/books. Public and admin endpoints share this
-// router — auth middleware is what actually protects the admin ones,
+// router - auth middleware is what actually protects the admin ones,
 // and /manage is used for admin reads so it can't collide with
 // /slug/:slug (the public detail route).
 

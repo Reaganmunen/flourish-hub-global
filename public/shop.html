@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shop books | Flourish Hub Global</title>
+<title>Shop | FlourishHub</title>
+<meta name="description" content="Books and learning resources from FlourishHub, in print and digital editions.">
+<link rel="icon" href="/assets/images/logo-flourishhub.jpeg">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -17,7 +19,7 @@
   <div class="container-folio ph-inner">
     <div class="ph-kicker"><i class="bi bi-bag-heart"></i> The shop</div>
     <h1>Shop</h1>
-    <p class="text-muted-folio">Fiction, essays and physical or digital editions, everything we've published, in one place.</p>
+    <p class="text-muted-folio">Books and learning resources from FlourishHub, in print and digital editions.</p>
   </div>
 </section>
 
@@ -50,7 +52,7 @@
 <script>window.ACTIVE_NAV = 'shop';</script>
 <script src="/assets/js/main.js"></script>
 <script>
-const PLACEHOLDER_COVER = 'https://placehold.co/400x600/f0f0f3/6b6f76?text=Flourish+Hub+Global';
+const PLACEHOLDER_COVER = 'https://placehold.co/400x600/f0f0f3/6b6f76?text=FlourishHub';
 const PAGE_SIZE = 12;
 let state = { page: 1, search: '', categoryId: '' };
 
@@ -58,7 +60,7 @@ function bookCard(book) {
   return `
     <a href="/book.html?slug=${encodeURIComponent(book.slug)}" class="book-card">
       <div class="cover-wrap">
-        <img src="${book.cover_url || PLACEHOLDER_COVER}" alt="${escapeHtml(book.title)}">
+        <img src="${escapeHtml(book.cover_url || PLACEHOLDER_COVER)}" alt="${escapeHtml(book.title)}">
         ${book.is_digital && !book.is_physical ? '<span class="badge-folio soft">Digital</span>' : ''}
       </div>
       <h3>${escapeHtml(book.title)}</h3>

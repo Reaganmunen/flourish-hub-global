@@ -22,6 +22,17 @@ async function createCheckoutSession(order, items) {
     quantity: item.quantity,
   }));
 
+  if (Number(order.shipping_cents) > 0) {
+    line_items.push({
+      price_data: {
+        currency: order.currency.toLowerCase(),
+        product_data: { name: 'Shipping' },
+        unit_amount: Number(order.shipping_cents),
+      },
+      quantity: 1,
+    });
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items,

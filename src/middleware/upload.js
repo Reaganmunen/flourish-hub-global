@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 
 // __dirname here is <root>/src/middleware, so '..','..' gets back to the
-// project root — uploads/ lives next to package.json, not inside src/.
+// project root - uploads/ lives next to package.json, not inside src/.
 const uploadDir = path.join(__dirname, '..', '..', process.env.UPLOAD_DIR || 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
